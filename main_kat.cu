@@ -27,6 +27,17 @@ static void printHex(const char *label, const uint8_t *buf, size_t len) {
     printf("\n");
 }
 
+// Dump expanded round keys for debugging
+static void dumpRoundKeys(const char *label, const uint32_t *rk, size_t words) {
+    printf("%s (\%zu words)\n", label, words);
+    for (size_t i = 0; i < words; ++i) {
+        if (i % 4 == 0) printf("  %2zu:", i);
+        printf(" %08x", rk[i]);
+        if (i % 4 == 3) printf("\n");
+    }
+    if (words % 4) printf("\n");
+}
+
 // Helper to pack a 96-bit IV into the ctrLo/ctrHi format expected by the
 // little-endian CTR kernels.  The IV is interpreted in network byte order and
 // the 32-bit counter is initialised to 1.
@@ -66,6 +77,7 @@ int main() {
         // Expand key and upload
         std::vector<uint32_t> roundKeys(44);
         expandKey128(key128, roundKeys.data());
+        dumpRoundKeys("AES-128 RoundKeys", roundKeys.data(), roundKeys.size());
         init_roundKeys(roundKeys.data(), roundKeys.size());
         // Allocate device buffers
         uint8_t *d_in = nullptr, *d_out = nullptr;
@@ -122,6 +134,7 @@ int main() {
         };
         std::vector<uint32_t> roundKeys(60);
         expandKey256(key256, roundKeys.data());
+        dumpRoundKeys("AES-256 RoundKeys", roundKeys.data(), roundKeys.size());
         init_roundKeys(roundKeys.data(), roundKeys.size());
         uint8_t *d_in = nullptr, *d_out = nullptr;
         CHECK_CUDA(cudaMalloc(&d_in, 16));
@@ -177,6 +190,7 @@ int main() {
         };
         std::vector<uint32_t> roundKeys(44);
         expandKey128(key, roundKeys.data());
+        dumpRoundKeys("AES-128 RoundKeys", roundKeys.data(), roundKeys.size());
         init_roundKeys(roundKeys.data(), roundKeys.size());
         uint8_t *d_plain = nullptr, *d_cipher = nullptr;
         CHECK_CUDA(cudaMalloc(&d_plain, 16));
@@ -237,6 +251,7 @@ int main() {
         };
         std::vector<uint32_t> roundKeys(60);
         expandKey256(key, roundKeys.data());
+        dumpRoundKeys("AES-256 RoundKeys", roundKeys.data(), roundKeys.size());
         init_roundKeys(roundKeys.data(), roundKeys.size());
         uint8_t *d_plain = nullptr, *d_cipher = nullptr;
         CHECK_CUDA(cudaMalloc(&d_plain, 16));
@@ -290,6 +305,7 @@ int main() {
         };
         std::vector<uint32_t> roundKeys(44);
         expandKey128(key, roundKeys.data());
+        dumpRoundKeys("AES-128 RoundKeys", roundKeys.data(), roundKeys.size());
         init_roundKeys(roundKeys.data(), roundKeys.size());
         uint8_t *d_plain = nullptr, *d_cipher = nullptr, *d_iv = nullptr, *d_tag = nullptr;
         CHECK_CUDA(cudaMalloc(&d_plain, 16));
@@ -366,6 +382,7 @@ int main() {
         };
         std::vector<uint32_t> roundKeys(60);
         expandKey256(key, roundKeys.data());
+        dumpRoundKeys("AES-256 RoundKeys", roundKeys.data(), roundKeys.size());
         init_roundKeys(roundKeys.data(), roundKeys.size());
         uint8_t *d_plain = nullptr, *d_cipher = nullptr, *d_iv = nullptr, *d_tag = nullptr;
         CHECK_CUDA(cudaMalloc(&d_plain, 16));
@@ -436,8 +453,14 @@ int main() {
             }
             // Expand key and set constant memory
             std::vector<uint32_t> roundKeys((keyBits == 128) ? 44 : 60);
-            if (keyBits == 128) expandKey128(key.data(), roundKeys.data());
-            else expandKey256(key.data(), roundKeys.data());
+            if (keyBits == 128) {
+                expandKey128(key.data(), roundKeys.data());
+                dumpRoundKeys("AES-128 RoundKeys", roundKeys.data(), roundKeys.size());
+            } else {
+                expandKey256(key.data(), roundKeys.data());
+                dumpRoundKeys("AES-256 RoundKeys", roundKeys.data(), roundKeys.size());
+            }
+            init_roundKeys(roundKeys.data(), (int) roundKeys.size());
             init_roundKeys(roundKeys.data(), (int) roundKeys.size());
 
             for (size_t dataBytes: testSizes) {
