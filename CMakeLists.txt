@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28)
 project(CudaProject LANGUAGES CXX CUDA)
 
 # Require CUDA and set standards
@@ -9,8 +9,17 @@ set(CMAKE_CUDA_STANDARD 14)
 # Target your GPU arch (8.6 for RTX 3050 Ti)
 set(CMAKE_CUDA_ARCHITECTURES 86)
 
-# Gather all .cu files in project directory
-file(GLOB CUDA_SOURCES "${CMAKE_SOURCE_DIR}/*.cu")
+# Explicitly list CUDA source files
+set(CUDA_SOURCES
+    aes_tables.cu
+    aes128_ecb.cu
+    aes128_ctr.cu
+    aes128_gcm.cu
+    aes256_ecb.cu
+    aes256_ctr.cu
+    aes256_gcm.cu
+    main_kat.cu
+)
 
 # Define a single executable
 add_executable(CudaProject ${CUDA_SOURCES})
