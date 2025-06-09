@@ -2,6 +2,12 @@
 #include <cstdio>
 #include <cstdlib>
 
+// Helper to load 32-bit words in big-endian order regardless of host endianness
+static inline uint32_t load_be32(const uint8_t *p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
+           ((uint32_t)p[2] << 8)  | ((uint32_t)p[3]);
+}
+
 // ----------------------------------------------------------
 // AES S-box (256-byte substitution box) and its inverse
 // These arrays are placed in constant memory on the GPU for fast access.
@@ -52,6 +58,15 @@ inline uint8_t xtime(uint8_t x) {
     return (uint8_t)((x << 1) ^ ((x & 0x80) ? 0x1B : 0x00));
 }
 
+static inline uint8_t mul2(uint8_t x)  { return xtime(x); }
+static inline uint8_t mul3(uint8_t x)  { return (uint8_t)(xtime(x) ^ x); }
+static inline uint8_t mul4(uint8_t x)  { return xtime(mul2(x)); }
+static inline uint8_t mul8(uint8_t x)  { return xtime(mul4(x)); }
+static inline uint8_t mul9(uint8_t x)  { return (uint8_t)(mul8(x) ^ x); }
+static inline uint8_t mul11(uint8_t x) { return (uint8_t)(mul8(x) ^ mul2(x) ^ x); }
+static inline uint8_t mul13(uint8_t x) { return (uint8_t)(mul8(x) ^ mul4(x) ^ x); }
+static inline uint8_t mul14(uint8_t x) { return (uint8_t)(mul8(x) ^ mul4(x) ^ mul2(x)); }
+
 // ----------------------------------------------------------
 // init_T_tables()
 //  - Computes the inverse S-box, encryption T-tables (h_T0..h_T3)
@@ -68,39 +83,24 @@ void init_T_tables() {
     // Compute encryption T-tables and decryption U-tables
     for (int i = 0; i < 256; ++i) {
         uint8_t s = h_sbox[i];
-        uint8_t s2 = xtime(s);       // 2·s in GF(2^8)
-        uint8_t s3 = (uint8_t)(s2 ^ s); // 3·s = 2·s ^ s
+        uint32_t w = ((uint32_t)mul2(s) << 24) |
+                     ((uint32_t)s       << 16) |
+                     ((uint32_t)s       << 8)  |
+                     (uint32_t)mul3(s);
+        h_T0[i] = w;
+        h_T1[i] = (w << 8)  | (w >> 24);
+        h_T2[i] = (w << 16) | (w >> 16);
+        h_T3[i] = (w << 24) | (w >> 8);
 
-        // Little-endian format: word bytes [3*s | s | s | 2*s]
-        h_T0[i] =  (uint32_t)s2        | ((uint32_t)s  << 8) |
-                   ((uint32_t)s  << 16) | ((uint32_t)s3 << 24);
-        h_T1[i] =  (uint32_t)s3        | ((uint32_t)s2 << 8) |
-                   ((uint32_t)s  << 16) | ((uint32_t)s  << 24);
-        h_T2[i] =  (uint32_t)s         | ((uint32_t)s3 << 8) |
-                   ((uint32_t)s2 << 16) | ((uint32_t)s  << 24);
-        h_T3[i] =  (uint32_t)s         | ((uint32_t)s  << 8) |
-                   ((uint32_t)s3 << 16) | ((uint32_t)s2 << 24);
-
-        // Compute values for inverse S-box
         uint8_t v = h_inv_sbox[i];
-        // For decryption MixColumns multipliers: 9, 11, 13, 14
-        uint8_t v2  = xtime(v);
-        uint8_t v4  = xtime(v2);
-        uint8_t v8  = xtime(v4);
-        uint8_t v9  = (uint8_t)(v8 ^ v);            // 9·v = v8 ^ v
-        uint8_t v11 = (uint8_t)(v8 ^ v2 ^ v);       // 11·v
-        uint8_t v13 = (uint8_t)(v8 ^ v4 ^ v);       // 13·v
-        uint8_t v14 = (uint8_t)(v8 ^ v4 ^ v2);      // 14·v
-
-        // Little-endian format for decrypt: [14*v | 9*v | 13*v | 11*v]
-        h_U0[i] =  (uint32_t)v14       | ((uint32_t)v9  << 8) |
-                   ((uint32_t)v13 << 16) | ((uint32_t)v11 << 24);
-        h_U1[i] =  (uint32_t)v11       | ((uint32_t)v14 << 8) |
-                   ((uint32_t)v9  << 16) | ((uint32_t)v13 << 24);
-        h_U2[i] =  (uint32_t)v13       | ((uint32_t)v11 << 8) |
-                   ((uint32_t)v14 << 16) | ((uint32_t)v9  << 24);
-        h_U3[i] =  (uint32_t)v9        | ((uint32_t)v13 << 8) |
-                   ((uint32_t)v11 << 16) | ((uint32_t)v14 << 24);
+        uint32_t dw = ((uint32_t)mul14(v) << 24) |
+                      ((uint32_t)mul9(v)  << 16) |
+                      ((uint32_t)mul13(v) << 8)  |
+                      (uint32_t)mul11(v);
+        h_U0[i] = dw;
+        h_U1[i] = (dw << 8)  | (dw >> 24);
+        h_U2[i] = (dw << 16) | (dw >> 16);
+        h_U3[i] = (dw << 24) | (dw >> 8);
     }
 
     // Copy S-box and inverse S-box to device constant memory
@@ -152,24 +152,20 @@ void expandKey128(const uint8_t *key, uint32_t *rk) {
     static const uint8_t Rcon[10] = {
         0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
     };
-    // Copy initial 4 words from original key
+    // Copy initial 4 words from original key (big-endian)
     for (int i = 0; i < 4; ++i) {
-        rk[i] = ((const uint32_t*)key)[i];
+        rk[i] = load_be32(key + 4 * i);
     }
     // Expand the remaining 40 words (total 44 words for AES-128: 11 round keys)
     for (int i = 4, rc = 0; i < 44; ++i) {
         uint32_t tmp = rk[i - 1];
         if ((i % 4) == 0) {
-            // Rotate word
             tmp = (tmp << 8) | (tmp >> 24);
-            // Apply S-box to each byte of tmp
-            uint8_t *bt = (uint8_t*)&tmp;
-            bt[0] = h_sbox[bt[0]];
-            bt[1] = h_sbox[bt[1]];
-            bt[2] = h_sbox[bt[2]];
-            bt[3] = h_sbox[bt[3]];
-            // XOR with round constant
-            bt[0] ^= Rcon[rc++];
+            tmp = ((uint32_t)h_sbox[(tmp >> 24) & 0xFF] << 24) |
+                  ((uint32_t)h_sbox[(tmp >> 16) & 0xFF] << 16) |
+                  ((uint32_t)h_sbox[(tmp >> 8)  & 0xFF] << 8)  |
+                  ((uint32_t)h_sbox[tmp & 0xFF]);
+            tmp ^= (uint32_t)Rcon[rc++] << 24;
         }
         rk[i] = rk[i - 4] ^ tmp;
     }
@@ -179,30 +175,26 @@ void expandKey256(const uint8_t *key, uint32_t *rk) {
     static const uint8_t Rcon[7] = {
         0x01,0x02,0x04,0x08,0x10,0x20,0x40
     };
-    // Copy initial 8 words from original 256-bit key
+    // Copy initial 8 words from original 256-bit key (big-endian)
     for (int i = 0; i < 8; ++i) {
-        rk[i] = ((const uint32_t*)key)[i];
+        rk[i] = load_be32(key + 4 * i);
     }
     // Expand remaining words (total 60 words for AES-256: 15 round keys)
     int rc = 0;
     for (int i = 8; i < 60; ++i) {
         uint32_t tmp = rk[i - 1];
         if ((i % 8) == 0) {
-            // RotWord + SubWord + Rcon
             tmp = (tmp << 8) | (tmp >> 24);
-            uint8_t *bt = (uint8_t*)&tmp;
-            bt[0] = h_sbox[bt[0]];
-            bt[1] = h_sbox[bt[1]];
-            bt[2] = h_sbox[bt[2]];
-            bt[3] = h_sbox[bt[3]];
-            bt[0] ^= Rcon[rc++];
+            tmp = ((uint32_t)h_sbox[(tmp >> 24) & 0xFF] << 24) |
+                  ((uint32_t)h_sbox[(tmp >> 16) & 0xFF] << 16) |
+                  ((uint32_t)h_sbox[(tmp >> 8)  & 0xFF] << 8)  |
+                  ((uint32_t)h_sbox[tmp & 0xFF]);
+            tmp ^= (uint32_t)Rcon[rc++] << 24;
         } else if ((i % 8) == 4) {
-            // SubWord (no rotation, for 256-bit key schedule)
-            uint8_t *bt = (uint8_t*)&tmp;
-            bt[0] = h_sbox[bt[0]];
-            bt[1] = h_sbox[bt[1]];
-            bt[2] = h_sbox[bt[2]];
-            bt[3] = h_sbox[bt[3]];
+            tmp = ((uint32_t)h_sbox[(tmp >> 24) & 0xFF] << 24) |
+                  ((uint32_t)h_sbox[(tmp >> 16) & 0xFF] << 16) |
+                  ((uint32_t)h_sbox[(tmp >> 8)  & 0xFF] << 8)  |
+                  ((uint32_t)h_sbox[tmp & 0xFF]);
         }
         rk[i] = rk[i - 8] ^ tmp;
     }
