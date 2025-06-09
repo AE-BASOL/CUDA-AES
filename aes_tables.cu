@@ -2,6 +2,12 @@
 #include <cstdio>
 #include <cstdlib>
 
+// Helper to load 32-bit words in big-endian order regardless of host endianness
+static inline uint32_t load_be32(const uint8_t *p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
+           ((uint32_t)p[2] << 8)  | ((uint32_t)p[3]);
+}
+
 // ----------------------------------------------------------
 // AES S-box (256-byte substitution box) and its inverse
 // These arrays are placed in constant memory on the GPU for fast access.
@@ -152,9 +158,9 @@ void expandKey128(const uint8_t *key, uint32_t *rk) {
     static const uint8_t Rcon[10] = {
         0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
     };
-    // Copy initial 4 words from original key
+    // Copy initial 4 words from original key (big-endian)
     for (int i = 0; i < 4; ++i) {
-        rk[i] = ((const uint32_t*)key)[i];
+        rk[i] = load_be32(key + 4 * i);
     }
     // Expand the remaining 40 words (total 44 words for AES-128: 11 round keys)
     for (int i = 4, rc = 0; i < 44; ++i) {
@@ -179,9 +185,9 @@ void expandKey256(const uint8_t *key, uint32_t *rk) {
     static const uint8_t Rcon[7] = {
         0x01,0x02,0x04,0x08,0x10,0x20,0x40
     };
-    // Copy initial 8 words from original 256-bit key
+    // Copy initial 8 words from original 256-bit key (big-endian)
     for (int i = 0; i < 8; ++i) {
-        rk[i] = ((const uint32_t*)key)[i];
+        rk[i] = load_be32(key + 4 * i);
     }
     // Expand remaining words (total 60 words for AES-256: 15 round keys)
     int rc = 0;
