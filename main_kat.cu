@@ -27,6 +27,19 @@ static void printHex(const char *label, const uint8_t *buf, size_t len) {
     printf("\n");
 }
 
+// Helper to pack a 96-bit IV into the ctrLo/ctrHi format expected by the
+// little-endian CTR kernels.  The IV is interpreted in network byte order and
+// the 32-bit counter is initialised to 1.
+static void packCtr(const uint8_t iv[12], uint64_t &ctrLo, uint64_t &ctrHi) {
+    uint32_t w0 = 0, w1 = 0, w2 = 0;
+    memcpy(&w0, iv, 4);
+    memcpy(&w1, iv + 4, 4);
+    memcpy(&w2, iv + 8, 4);
+    uint32_t w3 = 0x01000000u; // counter = 1 in big-endian
+    ctrLo = (uint64_t)w0 | ((uint64_t)w1 << 32);
+    ctrHi = (uint64_t)w2 | ((uint64_t)w3 << 32);
+}
+
 int main() {
     // Initialize tables in device constant memory
     init_T_tables();
@@ -169,13 +182,9 @@ int main() {
         CHECK_CUDA(cudaMalloc(&d_plain, 16));
         CHECK_CUDA(cudaMalloc(&d_cipher, 16));
         CHECK_CUDA(cudaMemcpy(d_plain, plaintext, 16, cudaMemcpyHostToDevice));
-        // Prepare 128-bit IV|counter: (ctrLo, ctrHi)
-        uint64_t ctrHi = 0ULL;
-        uint64_t ctrLo = 0ULL;
-        memcpy(&ctrHi, iv, 8);
-        uint32_t iv_low = 0;
-        memcpy(&iv_low, iv + 8, 4);
-        ctrLo = ((uint64_t) iv_low << 32) | 0x00000001ULL;
+        // Prepare 128-bit IV|counter for little-endian kernel
+        uint64_t ctrHi = 0, ctrLo = 0;
+        packCtr(iv, ctrLo, ctrHi);
         aes128_ctr_encrypt<<<1,1>>>(d_plain, d_cipher, 1, ctrLo, ctrHi);
         CHECK_CUDA(cudaDeviceSynchronize());
         uint8_t cipher[16];
@@ -233,12 +242,8 @@ int main() {
         CHECK_CUDA(cudaMalloc(&d_plain, 16));
         CHECK_CUDA(cudaMalloc(&d_cipher, 16));
         CHECK_CUDA(cudaMemcpy(d_plain, plaintext, 16, cudaMemcpyHostToDevice));
-        uint64_t ctrHi = 0ULL;
-        uint64_t ctrLo = 0ULL;
-        memcpy(&ctrHi, iv, 8);
-        uint32_t iv_low = 0;
-        memcpy(&iv_low, iv + 8, 4);
-        ctrLo = ((uint64_t) iv_low << 32) | 0x00000001ULL;
+        uint64_t ctrHi = 0, ctrLo = 0;
+        packCtr(iv, ctrLo, ctrHi);
         aes256_ctr_encrypt<<<1,1>>>(d_plain, d_cipher, 1, ctrLo, ctrHi);
         CHECK_CUDA(cudaDeviceSynchronize());
         uint8_t cipher[16];
@@ -466,19 +471,12 @@ int main() {
                 } else if (mode == "ecb" && keyBits == 256) {
                     aes256_ecb_encrypt<<<grid, block>>>(d_plain, d_cipher, nBlocks);
                 } else if (mode == "ctr" && keyBits == 128) {
-                    // Prepare 128-bit IV for CTR (ctrHi and ctrLo)
-                    uint64_t ctrHi = 0ULL, ctrLo = 0ULL;
-                    memcpy(&ctrHi, iv.data(), 8);
-                    uint32_t iv_low = 0;
-                    memcpy(&iv_low, iv.data() + 8, 4);
-                    ctrLo = ((uint64_t) iv_low << 32) | 1ULL;
+                    uint64_t ctrHi = 0, ctrLo = 0;
+                    packCtr(iv.data(), ctrLo, ctrHi);
                     aes128_ctr_encrypt<<<grid, block>>>(d_plain, d_cipher, nBlocks, ctrLo, ctrHi);
                 } else if (mode == "ctr" && keyBits == 256) {
-                    uint64_t ctrHi = 0ULL, ctrLo = 0ULL;
-                    memcpy(&ctrHi, iv.data(), 8);
-                    uint32_t iv_low = 0;
-                    memcpy(&iv_low, iv.data() + 8, 4);
-                    ctrLo = ((uint64_t) iv_low << 32) | 1ULL;
+                    uint64_t ctrHi = 0, ctrLo = 0;
+                    packCtr(iv.data(), ctrLo, ctrHi);
                     aes256_ctr_encrypt<<<grid, block>>>(d_plain, d_cipher, nBlocks, ctrLo, ctrHi);
                 } else if (mode == "gcm" && keyBits == 128) {
                     // Copy IV to device (12 bytes)
@@ -520,19 +518,13 @@ int main() {
                     aes256_ecb_decrypt<<<grid, block>>>(d_cipher, d_plain, nBlocks);
                 } else if (mode == "ctr" && keyBits == 128) {
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
-                    uint64_t ctrHi = 0ULL, ctrLo = 0ULL;
-                    memcpy(&ctrHi, iv.data(), 8);
-                    uint32_t iv_low = 0;
-                    memcpy(&iv_low, iv.data() + 8, 4);
-                    ctrLo = ((uint64_t) iv_low << 32) | 1ULL;
+                    uint64_t ctrHi = 0, ctrLo = 0;
+                    packCtr(iv.data(), ctrLo, ctrHi);
                     aes128_ctr_decrypt<<<grid, block>>>(d_cipher, d_plain, nBlocks, ctrLo, ctrHi);
                 } else if (mode == "ctr" && keyBits == 256) {
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
-                    uint64_t ctrHi = 0ULL, ctrLo = 0ULL;
-                    memcpy(&ctrHi, iv.data(), 8);
-                    uint32_t iv_low = 0;
-                    memcpy(&iv_low, iv.data() + 8, 4);
-                    ctrLo = ((uint64_t) iv_low << 32) | 1ULL;
+                    uint64_t ctrHi = 0, ctrLo = 0;
+                    packCtr(iv.data(), ctrLo, ctrHi);
                     aes256_ctr_decrypt<<<grid, block>>>(d_cipher, d_plain, nBlocks, ctrLo, ctrHi);
                 } else if (mode == "gcm" && keyBits == 128) {
                     // Copy cipher back to device and decrypt (generate tag as well)

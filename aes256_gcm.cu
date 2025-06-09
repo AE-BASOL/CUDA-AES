@@ -68,10 +68,13 @@ __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     // Setup IV counters
     uint64_t IV_lo = 0ull, IV_hi = 0ull;
     if (threadIdx.x == 0) {
-        IV_hi = ((const uint64_t*)iv)[0];
-        uint32_t iv_low32 = 0;
-        memcpy(&iv_low32, iv + 8, 4);
-        IV_lo = ((uint64_t)iv_low32 << 32) | 1ULL;
+        uint32_t w0 = 0, w1 = 0, w2 = 0;
+        memcpy(&w0, iv, 4);
+        memcpy(&w1, iv + 4, 4);
+        memcpy(&w2, iv + 8, 4);
+        uint32_t w3 = 0x01000000u;
+        IV_lo = (uint64_t)w0 | ((uint64_t)w1 << 32);
+        IV_hi = (uint64_t)w2 | ((uint64_t)w3 << 32);
     }
     __syncthreads();
     IV_lo = __shfl_sync(0xFFFFFFFF, IV_lo, 0);
@@ -216,10 +219,13 @@ __global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
 
     uint64_t IV_lo = 0ull, IV_hi = 0ull;
     if (threadIdx.x == 0) {
-        IV_hi = ((const uint64_t*)iv)[0];
-        uint32_t iv_low32 = 0;
-        memcpy(&iv_low32, iv + 8, 4);
-        IV_lo = ((uint64_t)iv_low32 << 32) | 1ULL;
+        uint32_t w0 = 0, w1 = 0, w2 = 0;
+        memcpy(&w0, iv, 4);
+        memcpy(&w1, iv + 4, 4);
+        memcpy(&w2, iv + 8, 4);
+        uint32_t w3 = 0x01000000u;
+        IV_lo = (uint64_t)w0 | ((uint64_t)w1 << 32);
+        IV_hi = (uint64_t)w2 | ((uint64_t)w3 << 32);
     }
     __syncthreads();
     IV_lo = __shfl_sync(0xFFFFFFFF, IV_lo, 0);
