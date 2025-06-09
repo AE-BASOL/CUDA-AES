@@ -132,3 +132,4 @@ __global__ void aes128_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
     ((uint32_t*)pt)[2] = ((const uint32_t*)ct)[2] ^ ((const uint32_t*)k)[2];
     ((uint32_t*)pt)[3] = ((const uint32_t*)ct)[3] ^ ((const uint32_t*)k)[3];
 }
+
