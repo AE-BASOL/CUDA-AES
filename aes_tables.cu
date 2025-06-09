@@ -77,15 +77,13 @@ void init_T_tables() {
         uint8_t s2 = xtime(s);       // 2·s in GF(2^8)
         uint8_t s3 = (uint8_t)(s2 ^ s); // 3·s = 2·s ^ s
 
-        // Little-endian format: word bytes [3*s | s | s | 2*s]
-        h_T0[i] =  (uint32_t)s2        | ((uint32_t)s  << 8) |
-                   ((uint32_t)s  << 16) | ((uint32_t)s3 << 24);
-        h_T1[i] =  (uint32_t)s3        | ((uint32_t)s2 << 8) |
-                   ((uint32_t)s  << 16) | ((uint32_t)s  << 24);
-        h_T2[i] =  (uint32_t)s         | ((uint32_t)s3 << 8) |
-                   ((uint32_t)s2 << 16) | ((uint32_t)s  << 24);
-        h_T3[i] =  (uint32_t)s         | ((uint32_t)s  << 8) |
-                   ((uint32_t)s3 << 16) | ((uint32_t)s2 << 24);
+        // Base T0 word in OpenSSL format (big-endian constants)
+        uint32_t w =  (uint32_t)s3        | ((uint32_t)s  << 8) |
+                      ((uint32_t)s  << 16) | ((uint32_t)s2 << 24);
+        h_T0[i] = w;
+        h_T1[i] = (w >> 8)  | (w << 24);   // rotate right by 8
+        h_T2[i] = (w >> 16) | (w << 16);   // rotate right by 16
+        h_T3[i] = (w >> 24) | (w << 8);    // rotate right by 24
 
         // Compute values for inverse S-box
         uint8_t v = h_inv_sbox[i];
@@ -98,15 +96,13 @@ void init_T_tables() {
         uint8_t v13 = (uint8_t)(v8 ^ v4 ^ v);       // 13·v
         uint8_t v14 = (uint8_t)(v8 ^ v4 ^ v2);      // 14·v
 
-        // Little-endian format for decrypt: [14*v | 9*v | 13*v | 11*v]
-        h_U0[i] =  (uint32_t)v14       | ((uint32_t)v9  << 8) |
-                   ((uint32_t)v13 << 16) | ((uint32_t)v11 << 24);
-        h_U1[i] =  (uint32_t)v11       | ((uint32_t)v14 << 8) |
-                   ((uint32_t)v9  << 16) | ((uint32_t)v13 << 24);
-        h_U2[i] =  (uint32_t)v13       | ((uint32_t)v11 << 8) |
-                   ((uint32_t)v14 << 16) | ((uint32_t)v9  << 24);
-        h_U3[i] =  (uint32_t)v9        | ((uint32_t)v13 << 8) |
-                   ((uint32_t)v11 << 16) | ((uint32_t)v14 << 24);
+        // Base Td0 word in OpenSSL format
+        uint32_t dw = ((uint32_t)v14 << 24) | ((uint32_t)v9 << 16) |
+                      ((uint32_t)v13 << 8) | (uint32_t)v11;
+        h_U0[i] = dw;
+        h_U1[i] = (dw >> 8)  | (dw << 24);  // rotate right by 8
+        h_U2[i] = (dw >> 16) | (dw << 16);  // rotate right by 16
+        h_U3[i] = (dw >> 24) | (dw << 8);   // rotate right by 24
     }
 
     // Copy S-box and inverse S-box to device constant memory
