@@ -23,6 +23,12 @@
 #include <random>
 #include <chrono>
 
+// Helper to load a 32-bit little-endian word regardless of host endianness
+static inline uint32_t load_le32(const uint8_t *p) {
+    return ((uint32_t)p[0]) | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
 // --------------------------------------------------
 //  Optional CPU reference (OpenSSL 3.x needed)
 // --------------------------------------------------
@@ -166,22 +172,22 @@ void expandKey128(const uint8_t *key, uint32_t *rk)
     static const uint8_t rcon[10] = {
       0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
     };
-    // initial 4 words
-    for(int i=0;i<4;i++) rk[i] = ((const uint32_t*)key)[i];
+    // initial 4 words (little-endian)
+    for(int i=0;i<4;i++) rk[i] = load_le32(key + 4 * i);
     // use host S-box to do SubWord:
     for(int i=4, rc=0;i<44;i++){
       uint32_t tmp = rk[i-1];
       if((i & 3)==0){
-        // rotate
-        tmp = (tmp<<8)|(tmp>>24);
+        // rotate for little-endian schedule
+        tmp = (tmp>>8)|(tmp<<24);
         // apply S-box on each byte
         uint8_t *b = (uint8_t*)&tmp;
         tmp = (uint32_t)h_sbox[b[0]]<<24
             | (uint32_t)h_sbox[b[1]]<<16
             | (uint32_t)h_sbox[b[2]]<< 8
             | (uint32_t)h_sbox[b[3]];
-        // xor Rcon
-        tmp ^= (uint32_t)rcon[rc++] << 24;
+        // xor Rcon on least significant byte (little-endian)
+        tmp ^= rcon[rc++];
       }
       rk[i] = rk[i-4] ^ tmp;
     }
@@ -191,8 +197,8 @@ void expandKey128(const uint8_t *key, uint32_t *rk)
 void expandKey256(const uint8_t *key, uint32_t *rk)
 {
     static const uint8_t rcon[7] = {0x01,0x02,0x04,0x08,0x10,0x20,0x40};
-    // copy first 8 words
-    for (int i = 0; i < 8; ++i) rk[i] = ((const uint32_t*)key)[i];
+    // copy first 8 words (little-endian)
+    for (int i = 0; i < 8; ++i) rk[i] = load_le32(key + 4 * i);
 
     int rc = 0;
     for (int i = 8; i < 60; ++i)
@@ -200,12 +206,12 @@ void expandKey256(const uint8_t *key, uint32_t *rk)
         uint32_t tmp = rk[i-1];
         if (i % 8 == 0)
         {
-            // RotWord + SubWord
-            tmp = (tmp << 8) | (tmp >> 24);
+            // RotWord + SubWord (little-endian rotation)
+            tmp = (tmp >> 8) | (tmp << 24);
             uint8_t *b = (uint8_t*)&tmp;
             tmp = (uint32_t)h_sbox[b[0]]<<24 | (uint32_t)h_sbox[b[1]]<<16 |
                   (uint32_t)h_sbox[b[2]]<< 8 | (uint32_t)h_sbox[b[3]];
-            tmp ^= (uint32_t)rcon[rc++] << 24;
+            tmp ^= rcon[rc++];
         }
         else if (i % 8 == 4)
         {

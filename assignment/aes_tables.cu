@@ -2,6 +2,12 @@
 #include <cstdio>
 #include <cstdlib>
 
+// Helper to load 32-bit words in little-endian order regardless of host endianness
+static inline uint32_t load_le32(const uint8_t *p) {
+    return ((uint32_t)p[0]) | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
 // ----------------------------------------------------------
 // AES S-box (256-byte substitution box) and its inverse
 // These arrays are placed in constant memory on the GPU for fast access.
@@ -152,16 +158,16 @@ void expandKey128(const uint8_t *key, uint32_t *rk) {
     static const uint8_t Rcon[10] = {
         0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36
     };
-    // Copy initial 4 words from original key
+    // Copy initial 4 words from original key (little-endian)
     for (int i = 0; i < 4; ++i) {
-        rk[i] = ((const uint32_t*)key)[i];
+        rk[i] = load_le32(key + 4 * i);
     }
     // Expand the remaining 40 words (total 44 words for AES-128: 11 round keys)
     for (int i = 4, rc = 0; i < 44; ++i) {
         uint32_t tmp = rk[i - 1];
         if ((i % 4) == 0) {
-            // Rotate word
-            tmp = (tmp << 8) | (tmp >> 24);
+            // Rotate word for little-endian key schedule
+            tmp = (tmp >> 8) | (tmp << 24);
             // Apply S-box to each byte of tmp
             uint8_t *bt = (uint8_t*)&tmp;
             bt[0] = h_sbox[bt[0]];
@@ -179,17 +185,17 @@ void expandKey256(const uint8_t *key, uint32_t *rk) {
     static const uint8_t Rcon[7] = {
         0x01,0x02,0x04,0x08,0x10,0x20,0x40
     };
-    // Copy initial 8 words from original 256-bit key
+    // Copy initial 8 words from original 256-bit key (little-endian)
     for (int i = 0; i < 8; ++i) {
-        rk[i] = ((const uint32_t*)key)[i];
+        rk[i] = load_le32(key + 4 * i);
     }
     // Expand remaining words (total 60 words for AES-256: 15 round keys)
     int rc = 0;
     for (int i = 8; i < 60; ++i) {
         uint32_t tmp = rk[i - 1];
         if ((i % 8) == 0) {
-            // RotWord + SubWord + Rcon
-            tmp = (tmp << 8) | (tmp >> 24);
+            // RotWord + SubWord + Rcon (little-endian rotation)
+            tmp = (tmp >> 8) | (tmp << 24);
             uint8_t *bt = (uint8_t*)&tmp;
             bt[0] = h_sbox[bt[0]];
             bt[1] = h_sbox[bt[1]];
