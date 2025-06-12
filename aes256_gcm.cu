@@ -28,9 +28,9 @@ static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al, uint64_t Bh,
 __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut) {
     // Implementation is analogous to aes128_gcm_encrypt, but using AES-256 (14 rounds).
     __shared__ uint64_t sh_H_hi, sh_H_lo;
-    __shared__ uint64_t partial_tag_hi[32];
-    __shared__ uint64_t partial_tag_lo[32];
-    __shared__ uint32_t partial_len[32];
+    // Shared memory for parallel GHASH reduction
+    __shared__ uint64_t partial_tag_hi[256];
+    __shared__ uint64_t partial_tag_lo[256];
 
     if (threadIdx.x == 0) {
         // Compute H = AES-256 encrypt of all-zero block
@@ -126,51 +126,35 @@ __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
 
     // GHASH (same pattern as AES-128 GCM, with same polynomial multiply)
     uint32_t tid = threadIdx.x;
-    if (tid < 32) {
-        size_t seg_size = (nBlocks + 31) / 32;
-        size_t start = seg_size * tid;
-        size_t end = (start + seg_size < nBlocks) ? (start + seg_size) : nBlocks;
-        uint64_t Xh = 0ull, Xl = 0ull;
-        for (size_t j = start; j < end; ++j) {
-            uint64_t c_l = ((uint64_t*)cipher)[2*j + 0];
-            uint64_t c_h = ((uint64_t*)cipher)[2*j + 1];
-            Xl ^= c_l;
-            Xh ^= c_h;
-            gf_mul128(Xh, Xl, sh_H_hi, sh_H_lo);
+    uint64_t partial_h = 0ull, partial_l = 0ull;
+    for (size_t i = tid; i < nBlocks; i += blockDim.x) {
+        uint64_t c_l = ((uint64_t*)cipher)[2*i + 0];
+        uint64_t c_h = ((uint64_t*)cipher)[2*i + 1];
+        uint64_t pow_h = 0ull, pow_l = 1ull;
+        uint64_t base_h = sh_H_hi, base_l = sh_H_lo;
+        size_t exp = nBlocks - i;
+        while (exp) {
+            if (exp & 1) gf_mul128(pow_h, pow_l, base_h, base_l);
+            exp >>= 1;
+            if (exp) gf_mul128(base_h, base_l, base_h, base_l);
         }
-        partial_tag_hi[tid] = Xh;
-        partial_tag_lo[tid] = Xl;
-        partial_len[tid] = (uint32_t)(end - start);
+        gf_mul128(c_h, c_l, pow_h, pow_l);
+        partial_h ^= c_h;
+        partial_l ^= c_l;
     }
+    partial_tag_hi[tid] = partial_h;
+    partial_tag_lo[tid] = partial_l;
     __syncthreads();
-    if (threadIdx.x == 0) {
-        uint64_t tag_h = partial_tag_hi[0];
-        uint64_t tag_l = partial_tag_lo[0];
-        uint64_t pow_hi[27], pow_lo[27];
-        pow_hi[0] = sh_H_hi;
-        pow_lo[0] = sh_H_lo;
-        for (int i = 1; i < 27; ++i) {
-            pow_hi[i] = pow_hi[i-1];
-            pow_lo[i] = pow_lo[i-1];
-            gf_mul128(pow_hi[i], pow_lo[i], pow_hi[i-1], pow_lo[i-1]);
+    for (unsigned s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            partial_tag_hi[tid] ^= partial_tag_hi[tid + s];
+            partial_tag_lo[tid] ^= partial_tag_lo[tid + s];
         }
-        size_t done_blocks = partial_len[0];
-        for (int seg = 1; seg < 32; ++seg) {
-            uint64_t exp_hi = 0ull, exp_lo = 0ull;
-            exp_lo = 1ull; exp_hi = 0ull;
-            uint32_t count = partial_len[seg];
-            for (int b = 0; b < 27; ++b) {
-                if (count & (1u << b)) {
-                    gf_mul128(exp_hi, exp_lo, pow_hi[b], pow_lo[b]);
-                }
-            }
-            gf_mul128(tag_h, tag_l, exp_hi, exp_lo);
-            tag_h ^= partial_tag_hi[seg];
-            tag_l ^= partial_tag_lo[seg];
-            done_blocks += partial_len[seg];
-        }
-        ((uint64_t*)tagOut)[0] = tag_l;
-        ((uint64_t*)tagOut)[1] = tag_h;
+        __syncthreads();
+    }
+    if (tid == 0) {
+        ((uint64_t*)tagOut)[0] = partial_tag_lo[0];
+        ((uint64_t*)tagOut)[1] = partial_tag_hi[0];
     }
 }
 
@@ -181,9 +165,8 @@ __global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
     // host.
 
     __shared__ uint64_t sh_H_hi, sh_H_lo;
-    __shared__ uint64_t partial_tag_hi[32];
-    __shared__ uint64_t partial_tag_lo[32];
-    __shared__ uint32_t partial_len[32];
+    __shared__ uint64_t partial_tag_hi[256];
+    __shared__ uint64_t partial_tag_lo[256];
 
     if (threadIdx.x == 0) {
         uint32_t s0=0, s1=0, s2=0, s3=0;
@@ -275,50 +258,34 @@ __global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
     __syncthreads();
 
     uint32_t tid = threadIdx.x;
-    if (tid < 32) {
-        size_t seg_size = (nBlocks + 31) / 32;
-        size_t start = seg_size * tid;
-        size_t end = (start + seg_size < nBlocks) ? (start + seg_size) : nBlocks;
-        uint64_t Xh = 0ull, Xl = 0ull;
-        for (size_t j = start; j < end; ++j) {
-            uint64_t c_l = ((uint64_t*)cipher)[2*j + 0];
-            uint64_t c_h = ((uint64_t*)cipher)[2*j + 1];
-            Xl ^= c_l;
-            Xh ^= c_h;
-            gf_mul128(Xh, Xl, sh_H_hi, sh_H_lo);
+    uint64_t partial_h = 0ull, partial_l = 0ull;
+    for (size_t i = tid; i < nBlocks; i += blockDim.x) {
+        uint64_t c_l = ((uint64_t*)cipher)[2*i + 0];
+        uint64_t c_h = ((uint64_t*)cipher)[2*i + 1];
+        uint64_t pow_h = 0ull, pow_l = 1ull;
+        uint64_t base_h = sh_H_hi, base_l = sh_H_lo;
+        size_t exp = nBlocks - i;
+        while (exp) {
+            if (exp & 1) gf_mul128(pow_h, pow_l, base_h, base_l);
+            exp >>= 1;
+            if (exp) gf_mul128(base_h, base_l, base_h, base_l);
         }
-        partial_tag_hi[tid] = Xh;
-        partial_tag_lo[tid] = Xl;
-        partial_len[tid] = (uint32_t)(end - start);
+        gf_mul128(c_h, c_l, pow_h, pow_l);
+        partial_h ^= c_h;
+        partial_l ^= c_l;
     }
+    partial_tag_hi[tid] = partial_h;
+    partial_tag_lo[tid] = partial_l;
     __syncthreads();
-    if (threadIdx.x == 0) {
-        uint64_t tag_h = partial_tag_hi[0];
-        uint64_t tag_l = partial_tag_lo[0];
-        uint64_t pow_hi[27], pow_lo[27];
-        pow_hi[0] = sh_H_hi;
-        pow_lo[0] = sh_H_lo;
-        for (int i = 1; i < 27; ++i) {
-            pow_hi[i] = pow_hi[i-1];
-            pow_lo[i] = pow_lo[i-1];
-            gf_mul128(pow_hi[i], pow_lo[i], pow_hi[i-1], pow_lo[i-1]);
+    for (unsigned s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            partial_tag_hi[tid] ^= partial_tag_hi[tid + s];
+            partial_tag_lo[tid] ^= partial_tag_lo[tid + s];
         }
-        size_t done_blocks = partial_len[0];
-        for (int seg = 1; seg < 32; ++seg) {
-            uint64_t exp_hi = 0ull, exp_lo = 0ull;
-            exp_lo = 1ull; exp_hi = 0ull;
-            uint32_t count = partial_len[seg];
-            for (int b = 0; b < 27; ++b) {
-                if (count & (1u << b)) {
-                    gf_mul128(exp_hi, exp_lo, pow_hi[b], pow_lo[b]);
-                }
-            }
-            gf_mul128(tag_h, tag_l, exp_hi, exp_lo);
-            tag_h ^= partial_tag_hi[seg];
-            tag_l ^= partial_tag_lo[seg];
-            done_blocks += partial_len[seg];
-        }
-        ((uint64_t*)tagOut)[0] = tag_l;
-        ((uint64_t*)tagOut)[1] = tag_h;
+        __syncthreads();
+    }
+    if (tid == 0) {
+        ((uint64_t*)tagOut)[0] = partial_tag_lo[0];
+        ((uint64_t*)tagOut)[1] = partial_tag_hi[0];
     }
 }
