@@ -11,35 +11,6 @@ static const int MAX_POW_BITS = 27;
 // Reuse the gf_mul128 device function from aes128_gcm.cu (same implementation)
 static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al,
                                         uint64_t Bh, uint64_t Bl) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-    uint64_t p0_lo, p0_hi, p1_lo, p1_hi, p2_lo, p2_hi, p3_lo, p3_hi;
-    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p0_lo) : "l"(Al), "l"(Bl));
-    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p0_hi) : "l"(Al), "l"(Bl));
-    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p1_lo) : "l"(Al), "l"(Bh));
-    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p1_hi) : "l"(Al), "l"(Bh));
-    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p2_lo) : "l"(Ah), "l"(Bl));
-    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p2_hi) : "l"(Ah), "l"(Bl));
-    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p3_lo) : "l"(Ah), "l"(Bh));
-    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p3_hi) : "l"(Ah), "l"(Bh));
-
-    uint64_t r0 = p0_lo;
-    uint64_t r1 = p0_hi ^ p1_lo ^ p2_lo;
-    uint64_t r2 = p1_hi ^ p2_hi ^ p3_lo;
-    uint64_t r3 = p3_hi;
-
-    const uint64_t R = 0xE100000000000000ULL;
-    for (int i = 0; i < 128; ++i) {
-        uint64_t carry = r3 >> 63;
-        r3 = (r3 << 1) | (r2 >> 63);
-        r2 = (r2 << 1) | (r1 >> 63);
-        r1 = (r1 << 1) | (r0 >> 63);
-        r0 <<= 1;
-        if (carry)
-            r0 ^= R;
-    }
-    Ah = r1;
-    Al = r0;
-#else
     uint64_t Zh = 0ull, Zl = 0ull;
     uint64_t Vh = Bh, Vl = Bl;
     const uint64_t R = 0xE100000000000000ULL;
@@ -56,7 +27,6 @@ static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al,
     }
     Ah = Zh;
     Al = Zl;
-#endif
 }
 
 __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut) {
