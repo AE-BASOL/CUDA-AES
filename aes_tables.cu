@@ -24,6 +24,8 @@ __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[256];
 // Device round key array (max 60 32-bit words for AES-256).
 // All key schedules (128/256-bit) are stored here; AES-128 uses first 44 words, AES-256 uses 60.
 __device__ __constant__ uint32_t d_roundKeys[60];
+__device__ __constant__ uint64_t d_H_pow_hi[32];
+__device__ __constant__ uint64_t d_H_pow_lo[32];
 
 
 
@@ -212,4 +214,70 @@ void expandKey256(const uint8_t *key, uint32_t *rk) {
         }
         rk[i] = rk[i - 8] ^ tmp;
     }
+}
+
+// ----------------------------------------------------------
+//  Host-side GF(2^128) multiply (same as device gf_mul128)
+// ----------------------------------------------------------
+static inline void gf_mul128_host(uint64_t &Ah, uint64_t &Al,
+                                  uint64_t Bh, uint64_t Bl) {
+    uint64_t Zh = 0ull, Zl = 0ull;
+    uint64_t Vh = Bh, Vl = Bl;
+    const uint64_t R = 0xE100000000000000ULL;
+    for (int i = 0; i < 128; ++i) {
+        if (Al & 1ULL) { Zh ^= Vh; Zl ^= Vl; }
+        bool carry = (Vl & 1ULL);
+        Vl = (Vl >> 1) | (Vh << 63);
+        Vh >>= 1;
+        if (carry) Vh ^= R;
+        Al = (Al >> 1) | (Ah << 63);
+        Ah >>= 1;
+    }
+    Ah = Zh; Al = Zl;
+}
+
+// ----------------------------------------------------------
+//  init_gcm_powers()
+//    - Computes H and its powers-of-two using the supplied round keys
+//    - Copies results to device constant memory (d_H_pow_hi/lo)
+// ----------------------------------------------------------
+void init_gcm_powers(const uint32_t *rk, int nRounds) {
+    // Compute H = AES_encrypt(0^128)
+    uint32_t s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+    s0 ^= rk[0]; s1 ^= rk[1]; s2 ^= rk[2]; s3 ^= rk[3];
+    uint32_t t0, t1, t2, t3;
+    for (int r = 1; r < nRounds; ++r) {
+        t0 = h_T0[s0 & 0xFF] ^ h_T1[(s1>>8)&0xFF] ^ h_T2[(s2>>16)&0xFF] ^ h_T3[(s3>>24)&0xFF] ^ rk[4*r+0];
+        t1 = h_T0[s1 & 0xFF] ^ h_T1[(s2>>8)&0xFF] ^ h_T2[(s3>>16)&0xFF] ^ h_T3[(s0>>24)&0xFF] ^ rk[4*r+1];
+        t2 = h_T0[s2 & 0xFF] ^ h_T1[(s3>>8)&0xFF] ^ h_T2[(s0>>16)&0xFF] ^ h_T3[(s1>>24)&0xFF] ^ rk[4*r+2];
+        t3 = h_T0[s3 & 0xFF] ^ h_T1[(s0>>8)&0xFF] ^ h_T2[(s1>>16)&0xFF] ^ h_T3[(s2>>24)&0xFF] ^ rk[4*r+3];
+        s0 = t0; s1 = t1; s2 = t2; s3 = t3;
+    }
+    // final round uses S-box only
+    uint8_t buf[16];
+    buf[0]  = h_sbox[s0 & 0xFF];      buf[4]  = h_sbox[(s1>>8)&0xFF];
+    buf[8]  = h_sbox[(s2>>16)&0xFF];  buf[12] = h_sbox[(s3>>24)&0xFF];
+    buf[1]  = h_sbox[s1 & 0xFF];      buf[5]  = h_sbox[(s2>>8)&0xFF];
+    buf[9]  = h_sbox[(s3>>16)&0xFF];  buf[13] = h_sbox[(s0>>24)&0xFF];
+    buf[2]  = h_sbox[s2 & 0xFF];      buf[6]  = h_sbox[(s3>>8)&0xFF];
+    buf[10] = h_sbox[(s0>>16)&0xFF];  buf[14] = h_sbox[(s1>>24)&0xFF];
+    buf[3]  = h_sbox[s3 & 0xFF];      buf[7]  = h_sbox[(s0>>8)&0xFF];
+    buf[11] = h_sbox[(s1>>16)&0xFF];  buf[15] = h_sbox[(s2>>24)&0xFF];
+    ((uint32_t*)buf)[0] ^= rk[4*nRounds+0];
+    ((uint32_t*)buf)[1] ^= rk[4*nRounds+1];
+    ((uint32_t*)buf)[2] ^= rk[4*nRounds+2];
+    ((uint32_t*)buf)[3] ^= rk[4*nRounds+3];
+    uint64_t H_lo = ((uint64_t*)buf)[0];
+    uint64_t H_hi = ((uint64_t*)buf)[1];
+
+    // Compute powers H^(2^i)
+    uint64_t pow_hi[32], pow_lo[32];
+    pow_hi[0] = H_hi; pow_lo[0] = H_lo;
+    for (int i = 1; i < 32; ++i) {
+        pow_hi[i] = pow_hi[i-1];
+        pow_lo[i] = pow_lo[i-1];
+        gf_mul128_host(pow_hi[i], pow_lo[i], pow_hi[i-1], pow_lo[i-1]);
+    }
+    cudaMemcpyToSymbol(d_H_pow_hi, pow_hi, sizeof(pow_hi));
+    cudaMemcpyToSymbol(d_H_pow_lo, pow_lo, sizeof(pow_lo));
 }

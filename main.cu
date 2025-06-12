@@ -50,6 +50,7 @@ extern __global__ void aes256_gcm_encrypt(const uint8_t*, uint8_t*, size_t, cons
 // --------------------------------------------------
 extern void init_T_tables();                        // uploads S‑box + T‑tables
 extern void init_roundKeys(const uint32_t *rk, int words);  // copies to const mem
+extern void init_gcm_powers(const uint32_t *rk, int nRounds);
 
 // Device constant array must be sized for AES‑256 (max 60 words)
 //__device__ __constant__ uint32_t d_roundKeys[60];
@@ -256,6 +257,7 @@ int main(int argc, char **argv)
     if (keyBits==128)   expandKey128(key.data(), roundKeys.data());
     else                expandKey256(key.data(), roundKeys.data());
     init_roundKeys(roundKeys.data(), (int)roundKeys.size());
+    init_gcm_powers(roundKeys.data(), (keyBits==128)?10:14);
 
     std::vector<uint8_t> iv(16, 0); // default 0 IV
     if (modeStr != "ecb") {
