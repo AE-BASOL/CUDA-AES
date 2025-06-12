@@ -40,7 +40,7 @@ static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al, uint64_t Bh,
 }
 
 // AES-128-GCM encryption kernel
-__global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut) {
+__global__ void aes128_gcm_encrypt(const uint8_t * __restrict__ plain, uint8_t * __restrict__ cipher, size_t nBlocks, const uint8_t * __restrict__ iv, uint8_t * __restrict__ tagOut) {
     // We will use one thread block to process the entire message for tag calculation correctness (no inter-block sync on device).
     // Use 256 threads: parallelize CTR encryption, then do GHASH in a single warp for tag.
     // nBlocks is number of 16-byte blocks of plaintext.
@@ -155,7 +155,7 @@ __global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     }
 }
 
-__global__ void aes128_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t nBlocks, const uint8_t *iv, const uint8_t *tag, uint8_t *tagOut) {
+__global__ void aes128_gcm_decrypt(const uint8_t * __restrict__ cipher, uint8_t * __restrict__ plain, size_t nBlocks, const uint8_t * __restrict__ iv, const uint8_t * __restrict__ tag, uint8_t * __restrict__ tagOut) {
     // Implement decryption directly rather than launching a nested kernel.
     // The operations mirror aes128_gcm_encrypt with plaintext and ciphertext
     // swapped.  The 'tag' parameter is provided for host-side verification and

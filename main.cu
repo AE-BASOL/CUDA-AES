@@ -38,12 +38,12 @@ extern void expandKey128(const uint8_t *key16, uint32_t *roundKeys44);
 extern void expandKey256(const uint8_t *key32, uint32_t *roundKeys60);
 
 // GPU kernels (launch signatures) – implemented in *.cu files
-extern __global__ void aes128_ecb_encrypt(const uint8_t*, uint8_t*, size_t);
-extern __global__ void aes256_ecb_encrypt(const uint8_t*, uint8_t*, size_t);
-extern __global__ void aes128_ctr_encrypt(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
-extern __global__ void aes256_ctr_encrypt(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
-extern __global__ void aes128_gcm_encrypt(const uint8_t*, uint8_t*, size_t, const uint8_t*, uint8_t*);
-extern __global__ void aes256_gcm_encrypt(const uint8_t*, uint8_t*, size_t, const uint8_t*, uint8_t*);
+extern __global__ void aes128_ecb_encrypt(const uint8_t* __restrict__, uint8_t* __restrict__, size_t);
+extern __global__ void aes256_ecb_encrypt(const uint8_t* __restrict__, uint8_t* __restrict__, size_t);
+extern __global__ void aes128_ctr_encrypt(const uint8_t* __restrict__, uint8_t* __restrict__, size_t, uint64_t, uint64_t);
+extern __global__ void aes256_ctr_encrypt(const uint8_t* __restrict__, uint8_t* __restrict__, size_t, uint64_t, uint64_t);
+extern __global__ void aes128_gcm_encrypt(const uint8_t* __restrict__, uint8_t* __restrict__, size_t, const uint8_t* __restrict__, uint8_t* __restrict__);
+extern __global__ void aes256_gcm_encrypt(const uint8_t* __restrict__, uint8_t* __restrict__, size_t, const uint8_t* __restrict__, uint8_t* __restrict__);
 
 // --------------------------------------------------
 //  Shared device constants (defined once in a .cu)

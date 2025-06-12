@@ -27,8 +27,8 @@ extern __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[25
 }
 
 /* ====================== kernel ============================== */
-__global__ void aes128_ecb_encrypt(const uint8_t *in,
-                                   uint8_t       *out,
+__global__ void aes128_ecb_encrypt(const uint8_t * __restrict__ in,
+                                   uint8_t       * __restrict__ out,
                                    size_t         nBlocks)
 {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -95,8 +95,8 @@ __global__ void aes128_ecb_encrypt(const uint8_t *in,
     reinterpret_cast<uint4*>(out)[idx] = outBlock;
 }
 
-__global__ void aes128_ecb_decrypt(const uint8_t *in,
-                                   uint8_t       *out,
+__global__ void aes128_ecb_decrypt(const uint8_t * __restrict__ in,
+                                   uint8_t       * __restrict__ out,
                                    size_t         nBlocks)
 {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;

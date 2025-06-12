@@ -27,7 +27,7 @@ static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al, uint64_t Bh,
     Al = Zl;
 }
 
-__global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut) {
+__global__ void aes256_gcm_encrypt(const uint8_t * __restrict__ plain, uint8_t * __restrict__ cipher, size_t nBlocks, const uint8_t * __restrict__ iv, uint8_t * __restrict__ tagOut) {
     // Implementation is analogous to aes128_gcm_encrypt, but using AES-256 (14 rounds).
     // GHASH uses precomputed H powers in constant memory
 
@@ -131,7 +131,7 @@ __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     }
 }
 
-__global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t nBlocks, const uint8_t *iv, const uint8_t *tag, uint8_t *tagOut) {
+__global__ void aes256_gcm_decrypt(const uint8_t * __restrict__ cipher, uint8_t * __restrict__ plain, size_t nBlocks, const uint8_t * __restrict__ iv, const uint8_t * __restrict__ tag, uint8_t * __restrict__ tagOut) {
     // Mirror aes256_gcm_encrypt but with ciphertext as input and plaintext as
     // output.  The authentication tag for the ciphertext is produced in
     // tagOut; the provided 'tag' parameter is expected to be checked by the
