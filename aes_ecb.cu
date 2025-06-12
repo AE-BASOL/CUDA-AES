@@ -29,9 +29,9 @@ extern __device__ __constant__ uint8_t  d_inv_sbox[256];
 } while(0)
 
 template<int ROUNDS>
-__global__ void aes_ecb_encrypt(const uint8_t* __restrict__ in,
-                                uint8_t* __restrict__ out,
-                                size_t nBlocks) {
+__device__ void aes_ecb_encrypt_impl(const uint8_t* __restrict__ in,
+                                     uint8_t* __restrict__ out,
+                                     size_t nBlocks) {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
 
@@ -86,10 +86,22 @@ __global__ void aes_ecb_encrypt(const uint8_t* __restrict__ in,
     reinterpret_cast<uint4*>(out)[idx] = make_uint4(r0,r1,r2,r3);
 }
 
+__global__ void aes_ecb_encrypt_10(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks) {
+    aes_ecb_encrypt_impl<10>(in, out, nBlocks);
+}
+
+__global__ void aes_ecb_encrypt_14(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks) {
+    aes_ecb_encrypt_impl<14>(in, out, nBlocks);
+}
+
 template<int ROUNDS>
-__global__ void aes_ecb_decrypt(const uint8_t* __restrict__ in,
-                                uint8_t* __restrict__ out,
-                                size_t nBlocks) {
+__device__ void aes_ecb_decrypt_impl(const uint8_t* __restrict__ in,
+                                     uint8_t* __restrict__ out,
+                                     size_t nBlocks) {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
 
@@ -132,8 +144,21 @@ __global__ void aes_ecb_decrypt(const uint8_t* __restrict__ in,
     reinterpret_cast<uint4*>(out)[idx] = make_uint4(r0,r1,r2,r3);
 }
 
-// Explicit instantiations for AES-128 and AES-256
-template __global__ void aes_ecb_encrypt<10>(const uint8_t*, uint8_t*, size_t);
-template __global__ void aes_ecb_encrypt<14>(const uint8_t*, uint8_t*, size_t);
-template __global__ void aes_ecb_decrypt<10>(const uint8_t*, uint8_t*, size_t);
-template __global__ void aes_ecb_decrypt<14>(const uint8_t*, uint8_t*, size_t);
+__global__ void aes_ecb_decrypt_10(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks) {
+    aes_ecb_decrypt_impl<10>(in, out, nBlocks);
+}
+
+__global__ void aes_ecb_decrypt_14(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks) {
+    aes_ecb_decrypt_impl<14>(in, out, nBlocks);
+}
+
+// Explicit instantiation of the templated device implementations so that the
+// linker resolves references from the wrapper kernels.
+template __device__ void aes_ecb_encrypt_impl<10>(const uint8_t*, uint8_t*, size_t);
+template __device__ void aes_ecb_encrypt_impl<14>(const uint8_t*, uint8_t*, size_t);
+template __device__ void aes_ecb_decrypt_impl<10>(const uint8_t*, uint8_t*, size_t);
+template __device__ void aes_ecb_decrypt_impl<14>(const uint8_t*, uint8_t*, size_t);

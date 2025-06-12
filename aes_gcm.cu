@@ -59,11 +59,11 @@ __device__ void ctr_keystream_gcm(uint64_t ctr_lo, uint64_t ctr_hi, uint8_t ks[1
 }
 
 template<int ROUNDS>
-__global__ void aes_gcm_encrypt(const uint8_t* __restrict__ plain,
-                                uint8_t* __restrict__ cipher,
-                                size_t nBlocks,
-                                const uint8_t* __restrict__ iv,
-                                uint8_t* __restrict__ tagOut) {
+__device__ void aes_gcm_encrypt_impl(const uint8_t* __restrict__ plain,
+                                     uint8_t* __restrict__ cipher,
+                                     size_t nBlocks,
+                                     const uint8_t* __restrict__ iv,
+                                     uint8_t* __restrict__ tagOut) {
     uint64_t IV_lo=0, IV_hi=0;
     if(threadIdx.x==0){
         uint32_t w0=0,w1=0,w2=0; memcpy(&w0,iv,4); memcpy(&w1,iv+4,4); memcpy(&w2,iv+8,4);
@@ -114,13 +114,29 @@ __global__ void aes_gcm_encrypt(const uint8_t* __restrict__ plain,
     }
 }
 
+__global__ void aes_gcm_encrypt_10(const uint8_t* __restrict__ plain,
+                                   uint8_t* __restrict__ cipher,
+                                   size_t nBlocks,
+                                   const uint8_t* __restrict__ iv,
+                                   uint8_t* __restrict__ tagOut) {
+    aes_gcm_encrypt_impl<10>(plain, cipher, nBlocks, iv, tagOut);
+}
+
+__global__ void aes_gcm_encrypt_14(const uint8_t* __restrict__ plain,
+                                   uint8_t* __restrict__ cipher,
+                                   size_t nBlocks,
+                                   const uint8_t* __restrict__ iv,
+                                   uint8_t* __restrict__ tagOut) {
+    aes_gcm_encrypt_impl<14>(plain, cipher, nBlocks, iv, tagOut);
+}
+
 template<int ROUNDS>
-__global__ void aes_gcm_decrypt(const uint8_t* __restrict__ cipher,
-                                uint8_t* __restrict__ plain,
-                                size_t nBlocks,
-                                const uint8_t* __restrict__ iv,
-                                const uint8_t* __restrict__ tag,
-                                uint8_t* __restrict__ tagOut) {
+__device__ void aes_gcm_decrypt_impl(const uint8_t* __restrict__ cipher,
+                                     uint8_t* __restrict__ plain,
+                                     size_t nBlocks,
+                                     const uint8_t* __restrict__ iv,
+                                     const uint8_t* __restrict__ tag,
+                                     uint8_t* __restrict__ tagOut) {
     (void)tag; // tag verification is host-side
     uint64_t IV_lo=0, IV_hi=0;
     if(threadIdx.x==0){
@@ -172,8 +188,26 @@ __global__ void aes_gcm_decrypt(const uint8_t* __restrict__ cipher,
     }
 }
 
-// Explicit instantiations for AES-128 and AES-256
-template __global__ void aes_gcm_encrypt<10>(const uint8_t*, uint8_t*, size_t, const uint8_t*, uint8_t*);
-template __global__ void aes_gcm_encrypt<14>(const uint8_t*, uint8_t*, size_t, const uint8_t*, uint8_t*);
-template __global__ void aes_gcm_decrypt<10>(const uint8_t*, uint8_t*, size_t, const uint8_t*, const uint8_t*, uint8_t*);
-template __global__ void aes_gcm_decrypt<14>(const uint8_t*, uint8_t*, size_t, const uint8_t*, const uint8_t*, uint8_t*);
+__global__ void aes_gcm_decrypt_10(const uint8_t* __restrict__ cipher,
+                                   uint8_t* __restrict__ plain,
+                                   size_t nBlocks,
+                                   const uint8_t* __restrict__ iv,
+                                   const uint8_t* __restrict__ tag,
+                                   uint8_t* __restrict__ tagOut) {
+    aes_gcm_decrypt_impl<10>(cipher, plain, nBlocks, iv, tag, tagOut);
+}
+
+__global__ void aes_gcm_decrypt_14(const uint8_t* __restrict__ cipher,
+                                   uint8_t* __restrict__ plain,
+                                   size_t nBlocks,
+                                   const uint8_t* __restrict__ iv,
+                                   const uint8_t* __restrict__ tag,
+                                   uint8_t* __restrict__ tagOut) {
+    aes_gcm_decrypt_impl<14>(cipher, plain, nBlocks, iv, tag, tagOut);
+}
+
+// Explicit instantiation of device implementations
+template __device__ void aes_gcm_encrypt_impl<10>(const uint8_t*, uint8_t*, size_t, const uint8_t*, uint8_t*);
+template __device__ void aes_gcm_encrypt_impl<14>(const uint8_t*, uint8_t*, size_t, const uint8_t*, uint8_t*);
+template __device__ void aes_gcm_decrypt_impl<10>(const uint8_t*, uint8_t*, size_t, const uint8_t*, const uint8_t*, uint8_t*);
+template __device__ void aes_gcm_decrypt_impl<14>(const uint8_t*, uint8_t*, size_t, const uint8_t*, const uint8_t*, uint8_t*);

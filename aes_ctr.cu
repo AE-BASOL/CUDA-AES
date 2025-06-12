@@ -55,9 +55,9 @@ __device__ inline void ctr_keystream(uint64_t ctr_lo, uint64_t ctr_hi,
 }
 
 template<int ROUNDS>
-__global__ void aes_ctr_encrypt(const uint8_t* __restrict__ in,
-                                uint8_t* __restrict__ out,
-                                size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
+__device__ void aes_ctr_encrypt_impl(const uint8_t* __restrict__ in,
+                                     uint8_t* __restrict__ out,
+                                     size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     const size_t stride = blockDim.x * gridDim.x;
     if (idx >= nBlocks) return;
@@ -101,15 +101,47 @@ __global__ void aes_ctr_encrypt(const uint8_t* __restrict__ in,
     }
 }
 
-template<int ROUNDS>
-__global__ void aes_ctr_decrypt(const uint8_t* __restrict__ in,
-                                uint8_t* __restrict__ out,
-                                size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
-    aes_ctr_encrypt<ROUNDS>(in, out, nBlocks, ctrLo, ctrHi);
+__global__ void aes_ctr_encrypt_10(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks,
+                                   uint64_t ctrLo,
+                                   uint64_t ctrHi) {
+    aes_ctr_encrypt_impl<10>(in, out, nBlocks, ctrLo, ctrHi);
 }
 
-// Explicit instantiations for AES-128 and AES-256
-template __global__ void aes_ctr_encrypt<10>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
-template __global__ void aes_ctr_encrypt<14>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
-template __global__ void aes_ctr_decrypt<10>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
-template __global__ void aes_ctr_decrypt<14>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+__global__ void aes_ctr_encrypt_14(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks,
+                                   uint64_t ctrLo,
+                                   uint64_t ctrHi) {
+    aes_ctr_encrypt_impl<14>(in, out, nBlocks, ctrLo, ctrHi);
+}
+
+template<int ROUNDS>
+__device__ void aes_ctr_decrypt_impl(const uint8_t* __restrict__ in,
+                                     uint8_t* __restrict__ out,
+                                     size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
+    aes_ctr_encrypt_impl<ROUNDS>(in, out, nBlocks, ctrLo, ctrHi);
+}
+
+__global__ void aes_ctr_decrypt_10(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks,
+                                   uint64_t ctrLo,
+                                   uint64_t ctrHi) {
+    aes_ctr_decrypt_impl<10>(in, out, nBlocks, ctrLo, ctrHi);
+}
+
+__global__ void aes_ctr_decrypt_14(const uint8_t* __restrict__ in,
+                                   uint8_t* __restrict__ out,
+                                   size_t nBlocks,
+                                   uint64_t ctrLo,
+                                   uint64_t ctrHi) {
+    aes_ctr_decrypt_impl<14>(in, out, nBlocks, ctrLo, ctrHi);
+}
+
+// Explicit instantiation of device implementations used by the wrapper kernels
+template __device__ void aes_ctr_encrypt_impl<10>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+template __device__ void aes_ctr_encrypt_impl<14>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+template __device__ void aes_ctr_decrypt_impl<10>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+template __device__ void aes_ctr_decrypt_impl<14>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
