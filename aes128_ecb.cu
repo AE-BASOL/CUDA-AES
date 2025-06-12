@@ -16,14 +16,14 @@ extern __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[25
 /* ------------ single round (little-endian tables) ------------- */
 #define AES_ROUND(o0,o1,o2,o3,s0,s1,s2,s3,rk)                    \
 {                                                                \
-    (o0)=d_T0[(s0      ) &0xFF] ^ d_T1[((s1>>  8)&0xFF)] ^       \
-         d_T2[((s2>>16)&0xFF)] ^ d_T3[((s3>>24)&0xFF)] ^ (rk)[0];\
-    (o1)=d_T0[(s1      ) &0xFF] ^ d_T1[((s2>>  8)&0xFF)] ^       \
-         d_T2[((s3>>16)&0xFF)] ^ d_T3[((s0>>24)&0xFF)] ^ (rk)[1];\
-    (o2)=d_T0[(s2      ) &0xFF] ^ d_T1[((s3>>  8)&0xFF)] ^       \
-         d_T2[((s0>>16)&0xFF)] ^ d_T3[((s1>>24)&0xFF)] ^ (rk)[2];\
-    (o3)=d_T0[(s3      ) &0xFF] ^ d_T1[((s0>>  8)&0xFF)] ^       \
-         d_T2[((s1>>16)&0xFF)] ^ d_T3[((s2>>24)&0xFF)] ^ (rk)[3];\
+    (o0)=sh_T0[(s0      ) &0xFF] ^ sh_T1[((s1>>  8)&0xFF)] ^     \
+         sh_T2[((s2>>16)&0xFF)] ^ sh_T3[((s3>>24)&0xFF)] ^ (rk)[0];\
+    (o1)=sh_T0[(s1      ) &0xFF] ^ sh_T1[((s2>>  8)&0xFF)] ^     \
+         sh_T2[((s3>>16)&0xFF)] ^ sh_T3[((s0>>24)&0xFF)] ^ (rk)[1];\
+    (o2)=sh_T0[(s2      ) &0xFF] ^ sh_T1[((s3>>  8)&0xFF)] ^     \
+         sh_T2[((s0>>16)&0xFF)] ^ sh_T3[((s1>>24)&0xFF)] ^ (rk)[2];\
+    (o3)=sh_T0[(s3      ) &0xFF] ^ sh_T1[((s0>>  8)&0xFF)] ^     \
+         sh_T2[((s1>>16)&0xFF)] ^ sh_T3[((s2>>24)&0xFF)] ^ (rk)[3];\
 }
 
 /* ====================== kernel ============================== */
@@ -33,6 +33,17 @@ __global__ void aes128_ecb_encrypt(const uint8_t *in,
 {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
+
+    __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
+    __shared__ uint8_t  sh_sbox[256];
+    if (threadIdx.x < 256) {
+        sh_T0[threadIdx.x] = d_T0[threadIdx.x];
+        sh_T1[threadIdx.x] = d_T1[threadIdx.x];
+        sh_T2[threadIdx.x] = d_T2[threadIdx.x];
+        sh_T3[threadIdx.x] = d_T3[threadIdx.x];
+        sh_sbox[threadIdx.x] = d_sbox[threadIdx.x];
+    }
+    __syncthreads();
 
     const uint32_t *rk = d_roundKeys;         // 44 words
 
@@ -56,7 +67,7 @@ __global__ void aes128_ecb_encrypt(const uint8_t *in,
     }
 
     /* final round (SubBytes + ShiftRows) */
-    const uint8_t *sb = d_sbox;
+    const uint8_t *sb = sh_sbox;
     uint8_t *dst = out + idx*16;
     dst[ 0] = sb[ s0        & 0xFF];  dst[ 4] = sb[(s1 >>  8) & 0xFF];
     dst[ 8] = sb[(s2 >> 16) & 0xFF];  dst[12] = sb[(s3 >> 24) & 0xFF];

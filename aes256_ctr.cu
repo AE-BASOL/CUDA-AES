@@ -7,6 +7,16 @@ extern __device__ __constant__ uint8_t  d_sbox[256];
 __global__ void aes256_ctr_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
+    __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
+    __shared__ uint8_t  sh_sbox[256];
+    if (threadIdx.x < 256) {
+        sh_T0[threadIdx.x] = d_T0[threadIdx.x];
+        sh_T1[threadIdx.x] = d_T1[threadIdx.x];
+        sh_T2[threadIdx.x] = d_T2[threadIdx.x];
+        sh_T3[threadIdx.x] = d_T3[threadIdx.x];
+        sh_sbox[threadIdx.x] = d_sbox[threadIdx.x];
+    }
+    __syncthreads();
     const uint32_t *rk = d_roundKeys;  // 60 words for AES-256
 
     uint64_t ctr_lo = ctrLo + idx;
@@ -23,19 +33,19 @@ __global__ void aes256_ctr_encrypt(const uint8_t *in, uint8_t *out, size_t nBloc
     uint32_t t0, t1, t2, t3;
     #pragma unroll
     for (int r = 1; r <= 13; ++r) {
-        t0 = d_T0[s0 & 0xFF] ^ d_T1[(s1 >> 8) & 0xFF] ^
-             d_T2[(s2 >> 16) & 0xFF] ^ d_T3[(s3 >> 24) & 0xFF] ^ rk[4*r + 0];
-        t1 = d_T0[s1 & 0xFF] ^ d_T1[(s2 >> 8) & 0xFF] ^
-             d_T2[(s3 >> 16) & 0xFF] ^ d_T3[(s0 >> 24) & 0xFF] ^ rk[4*r + 1];
-        t2 = d_T0[s2 & 0xFF] ^ d_T1[(s3 >> 8) & 0xFF] ^
-             d_T2[(s0 >> 16) & 0xFF] ^ d_T3[(s1 >> 24) & 0xFF] ^ rk[4*r + 2];
-        t3 = d_T0[s3 & 0xFF] ^ d_T1[(s0 >> 8) & 0xFF] ^
-             d_T2[(s1 >> 16) & 0xFF] ^ d_T3[(s2 >> 24) & 0xFF] ^ rk[4*r + 3];
+        t0 = sh_T0[s0 & 0xFF] ^ sh_T1[(s1 >> 8) & 0xFF] ^
+             sh_T2[(s2 >> 16) & 0xFF] ^ sh_T3[(s3 >> 24) & 0xFF] ^ rk[4*r + 0];
+        t1 = sh_T0[s1 & 0xFF] ^ sh_T1[(s2 >> 8) & 0xFF] ^
+             sh_T2[(s3 >> 16) & 0xFF] ^ sh_T3[(s0 >> 24) & 0xFF] ^ rk[4*r + 1];
+        t2 = sh_T0[s2 & 0xFF] ^ sh_T1[(s3 >> 8) & 0xFF] ^
+             sh_T2[(s0 >> 16) & 0xFF] ^ sh_T3[(s1 >> 24) & 0xFF] ^ rk[4*r + 2];
+        t3 = sh_T0[s3 & 0xFF] ^ sh_T1[(s0 >> 8) & 0xFF] ^
+             sh_T2[(s1 >> 16) & 0xFF] ^ sh_T3[(s2 >> 24) & 0xFF] ^ rk[4*r + 3];
         s0 = t0; s1 = t1; s2 = t2; s3 = t3;
     }
     // Final round for AES-256
     uint8_t k[16];
-    const uint8_t *sb = d_sbox;
+    const uint8_t *sb = sh_sbox;
     uint8_t *ko = k;
     ko[0]  = sb[s0 & 0xFF];        ko[1]  = sb[s1 & 0xFF];
     ko[2]  = sb[s2 & 0xFF];        ko[3]  = sb[s3 & 0xFF];
@@ -66,6 +76,16 @@ __global__ void aes256_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
+    __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
+    __shared__ uint8_t  sh_sbox[256];
+    if (threadIdx.x < 256) {
+        sh_T0[threadIdx.x] = d_T0[threadIdx.x];
+        sh_T1[threadIdx.x] = d_T1[threadIdx.x];
+        sh_T2[threadIdx.x] = d_T2[threadIdx.x];
+        sh_T3[threadIdx.x] = d_T3[threadIdx.x];
+        sh_sbox[threadIdx.x] = d_sbox[threadIdx.x];
+    }
+    __syncthreads();
     const uint32_t *rk = d_roundKeys;  // 60 words for AES-256
 
     uint64_t ctr_lo = ctrLo + idx;
@@ -81,19 +101,19 @@ __global__ void aes256_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
     uint32_t t0, t1, t2, t3;
 #pragma unroll
     for (int r = 1; r <= 13; ++r) {
-        t0 = d_T0[s0 & 0xFF] ^ d_T1[(s1 >> 8) & 0xFF] ^
-             d_T2[(s2 >> 16) & 0xFF] ^ d_T3[(s3 >> 24) & 0xFF] ^ rk[4*r + 0];
-        t1 = d_T0[s1 & 0xFF] ^ d_T1[(s2 >> 8) & 0xFF] ^
-             d_T2[(s3 >> 16) & 0xFF] ^ d_T3[(s0 >> 24) & 0xFF] ^ rk[4*r + 1];
-        t2 = d_T0[s2 & 0xFF] ^ d_T1[(s3 >> 8) & 0xFF] ^
-             d_T2[(s0 >> 16) & 0xFF] ^ d_T3[(s1 >> 24) & 0xFF] ^ rk[4*r + 2];
-        t3 = d_T0[s3 & 0xFF] ^ d_T1[(s0 >> 8) & 0xFF] ^
-             d_T2[(s1 >> 16) & 0xFF] ^ d_T3[(s2 >> 24) & 0xFF] ^ rk[4*r + 3];
+        t0 = sh_T0[s0 & 0xFF] ^ sh_T1[(s1 >> 8) & 0xFF] ^
+             sh_T2[(s2 >> 16) & 0xFF] ^ sh_T3[(s3 >> 24) & 0xFF] ^ rk[4*r + 0];
+        t1 = sh_T0[s1 & 0xFF] ^ sh_T1[(s2 >> 8) & 0xFF] ^
+             sh_T2[(s3 >> 16) & 0xFF] ^ sh_T3[(s0 >> 24) & 0xFF] ^ rk[4*r + 1];
+        t2 = sh_T0[s2 & 0xFF] ^ sh_T1[(s3 >> 8) & 0xFF] ^
+             sh_T2[(s0 >> 16) & 0xFF] ^ sh_T3[(s1 >> 24) & 0xFF] ^ rk[4*r + 2];
+        t3 = sh_T0[s3 & 0xFF] ^ sh_T1[(s0 >> 8) & 0xFF] ^
+             sh_T2[(s1 >> 16) & 0xFF] ^ sh_T3[(s2 >> 24) & 0xFF] ^ rk[4*r + 3];
         s0 = t0; s1 = t1; s2 = t2; s3 = t3;
     }
 
     uint8_t k[16];
-    const uint8_t *sb = d_sbox;
+    const uint8_t *sb = sh_sbox;
     uint8_t *ko = k;
     ko[0]  = sb[s0 & 0xFF];        ko[1]  = sb[s1 & 0xFF];
     ko[2]  = sb[s2 & 0xFF];        ko[3]  = sb[s3 & 0xFF];
