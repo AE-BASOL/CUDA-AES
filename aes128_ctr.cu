@@ -30,12 +30,12 @@ __global__ void aes128_ctr_encrypt(const uint8_t *in, uint8_t *out,
     if (idx >= nBlocks) return;
     __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
     __shared__ uint8_t  sh_sbox[256];
-    if (threadIdx.x < 256) {
-        sh_T0[threadIdx.x] = d_T0[threadIdx.x];
-        sh_T1[threadIdx.x] = d_T1[threadIdx.x];
-        sh_T2[threadIdx.x] = d_T2[threadIdx.x];
-        sh_T3[threadIdx.x] = d_T3[threadIdx.x];
-        sh_sbox[threadIdx.x] = d_sbox[threadIdx.x];
+    for (int i = threadIdx.x; i < 256; i += blockDim.x) {
+        sh_T0[i] = d_T0[i];
+        sh_T1[i] = d_T1[i];
+        sh_T2[i] = d_T2[i];
+        sh_T3[i] = d_T3[i];
+        sh_sbox[i] = d_sbox[i];
     }
     __syncthreads();
     const uint32_t *rk = d_roundKeys;  // 44 words for AES-128
@@ -168,12 +168,12 @@ __global__ void aes128_ctr_decrypt(const uint8_t *in, uint8_t *out,
     if (idx >= nBlocks) return;
     __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
     __shared__ uint8_t  sh_sbox[256];
-    if (threadIdx.x < 256) {
-        sh_T0[threadIdx.x] = d_T0[threadIdx.x];
-        sh_T1[threadIdx.x] = d_T1[threadIdx.x];
-        sh_T2[threadIdx.x] = d_T2[threadIdx.x];
-        sh_T3[threadIdx.x] = d_T3[threadIdx.x];
-        sh_sbox[threadIdx.x] = d_sbox[threadIdx.x];
+    for (int i = threadIdx.x; i < 256; i += blockDim.x) {
+        sh_T0[i] = d_T0[i];
+        sh_T1[i] = d_T1[i];
+        sh_T2[i] = d_T2[i];
+        sh_T3[i] = d_T3[i];
+        sh_sbox[i] = d_sbox[i];
     }
     __syncthreads();
     const uint32_t *rk = d_roundKeys;  // 44 words for AES-128
