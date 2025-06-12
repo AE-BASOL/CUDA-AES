@@ -108,6 +108,21 @@ __global__ void aes128_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
     // which would have resulted in thousands of kernel launches (one per
     // thread).  Instead, run the encryption logic directly here.
 
+    __shared__ uint32_t sh_T0[32][256];
+    __shared__ uint8_t  sh_sbox[32][256];
+
+    int tid = threadIdx.x;
+    if (tid < 256) {
+        uint32_t v = d_T0[tid];
+        uint8_t sbv = d_sbox[tid];
+#pragma unroll
+        for (int b = 0; b < 32; ++b) {
+            sh_T0[b][tid] = v;
+            sh_sbox[b][tid] = sbv;
+        }
+    }
+    __syncthreads();
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
     const uint32_t *rk = d_roundKeys;  // 44 words for AES-128
