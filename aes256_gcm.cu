@@ -120,6 +120,11 @@ __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
             accum_lo ^= __shfl_xor_sync(0xFFFFFFFF, accum_lo, off);
         }
         if (tid == 0) {
+            uint64_t lenBlock_lo = (uint64_t)nBlocks * 16ull * 8ull;
+            uint64_t lenBlock_hi = 0ull;
+            accum_lo ^= lenBlock_lo;
+            accum_hi ^= lenBlock_hi;
+            gf_mul128(accum_hi, accum_lo, d_H_pow_hi[0], d_H_pow_lo[0]);
             ((uint64_t*)tagOut)[0] = accum_lo;
             ((uint64_t*)tagOut)[1] = accum_hi;
         }
@@ -238,6 +243,11 @@ __global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
             accum_lo ^= __shfl_xor_sync(0xFFFFFFFF, accum_lo, off);
         }
         if (tid == 0) {
+            uint64_t lenBlock_lo = (uint64_t)nBlocks * 16ull * 8ull;
+            uint64_t lenBlock_hi = 0ull;
+            accum_lo ^= lenBlock_lo;
+            accum_hi ^= lenBlock_hi;
+            gf_mul128(accum_hi, accum_lo, d_H_pow_hi[0], d_H_pow_lo[0]);
             ((uint64_t*)tagOut)[0] = accum_lo;
             ((uint64_t*)tagOut)[1] = accum_hi;
         }
