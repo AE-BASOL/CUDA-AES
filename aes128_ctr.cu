@@ -55,32 +55,35 @@ __global__ void aes128_ctr_encrypt(const uint8_t *in, uint8_t *out, size_t nBloc
         s0 = t0; s1 = t1; s2 = t2; s3 = t3;
     }
     // Final round (SubBytes + ShiftRows + AddRoundKey) producing keystream block
-    uint8_t k[16];
     const uint8_t *sb = sh_sbox;
-    ((uint32_t*)k)[0] = 0; ((uint32_t*)k)[1] = 0; ((uint32_t*)k)[2] = 0; ((uint32_t*)k)[3] = 0;
-    uint8_t *ko = k;
-    ko[0]  = sb[ s0        & 0xFF];  ko[1]  = sb[ s1        & 0xFF];
-    ko[2]  = sb[ s2        & 0xFF];  ko[3]  = sb[ s3        & 0xFF];
-    ko[4]  = sb[(s1 >>  8) & 0xFF];  ko[5]  = sb[(s2 >>  8) & 0xFF];
-    ko[6]  = sb[(s3 >>  8) & 0xFF];  ko[7]  = sb[(s0 >>  8) & 0xFF];
-    ko[8]  = sb[(s2 >> 16) & 0xFF];  ko[9]  = sb[(s3 >> 16) & 0xFF];
-    ko[10] = sb[(s0 >> 16) & 0xFF];  ko[11] = sb[(s1 >> 16) & 0xFF];
-    ko[12] = sb[(s3 >> 24) & 0xFF];  ko[13] = sb[(s0 >> 24) & 0xFF];
-    ko[14] = sb[(s1 >> 24) & 0xFF];  ko[15] = sb[(s2 >> 24) & 0xFF];
-    // XOR final round key (words 40-43 for AES-128)
-    ((uint32_t*)k)[0] ^= rk[40];
-    ((uint32_t*)k)[1] ^= rk[41];
-    ((uint32_t*)k)[2] ^= rk[42];
-    ((uint32_t*)k)[3] ^= rk[43];
+    uint32_t k0 = ((uint32_t)sb[ s0        & 0xFF]) |
+                  ((uint32_t)sb[ s1        & 0xFF] << 8) |
+                  ((uint32_t)sb[ s2        & 0xFF] << 16) |
+                  ((uint32_t)sb[ s3        & 0xFF] << 24);
+    uint32_t k1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
+                  ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
+    uint32_t k2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
+                  ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
+    uint32_t k3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
+                  ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
 
-    // XOR plaintext with keystream to produce ciphertext
-    const uint8_t *pt = in + idx * 16;
-    uint8_t *ct = out + idx * 16;
-    // Process 16 bytes
-    ((uint32_t*)ct)[0] = ((const uint32_t*)pt)[0] ^ ((const uint32_t*)k)[0];
-    ((uint32_t*)ct)[1] = ((const uint32_t*)pt)[1] ^ ((const uint32_t*)k)[1];
-    ((uint32_t*)ct)[2] = ((const uint32_t*)pt)[2] ^ ((const uint32_t*)k)[2];
-    ((uint32_t*)ct)[3] = ((const uint32_t*)pt)[3] ^ ((const uint32_t*)k)[3];
+    k0 ^= rk[40];
+    k1 ^= rk[41];
+    k2 ^= rk[42];
+    k3 ^= rk[43];
+
+    uint4 ptBlock = reinterpret_cast<const uint4*>(in)[idx];
+    uint4 outBlock = make_uint4(ptBlock.x ^ k0,
+                                ptBlock.y ^ k1,
+                                ptBlock.z ^ k2,
+                                ptBlock.w ^ k3);
+    reinterpret_cast<uint4*>(out)[idx] = outBlock;
 }
 
 __global__ void aes128_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
@@ -128,27 +131,33 @@ __global__ void aes128_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
         s0 = t0; s1 = t1; s2 = t2; s3 = t3;
     }
 
-    uint8_t k[16];
     const uint8_t *sb = sh_sbox;
-    ((uint32_t*)k)[0] = 0; ((uint32_t*)k)[1] = 0; ((uint32_t*)k)[2] = 0; ((uint32_t*)k)[3] = 0;
-    uint8_t *ko = k;
-    ko[0]  = sb[ s0        & 0xFF];  ko[1]  = sb[ s1        & 0xFF];
-    ko[2]  = sb[ s2        & 0xFF];  ko[3]  = sb[ s3        & 0xFF];
-    ko[4]  = sb[(s1 >>  8) & 0xFF];  ko[5]  = sb[(s2 >>  8) & 0xFF];
-    ko[6]  = sb[(s3 >>  8) & 0xFF];  ko[7]  = sb[(s0 >>  8) & 0xFF];
-    ko[8]  = sb[(s2 >> 16) & 0xFF];  ko[9]  = sb[(s3 >> 16) & 0xFF];
-    ko[10] = sb[(s0 >> 16) & 0xFF];  ko[11] = sb[(s1 >> 16) & 0xFF];
-    ko[12] = sb[(s3 >> 24) & 0xFF];  ko[13] = sb[(s0 >> 24) & 0xFF];
-    ko[14] = sb[(s1 >> 24) & 0xFF];  ko[15] = sb[(s2 >> 24) & 0xFF];
-    ((uint32_t*)k)[0] ^= rk[40];
-    ((uint32_t*)k)[1] ^= rk[41];
-    ((uint32_t*)k)[2] ^= rk[42];
-    ((uint32_t*)k)[3] ^= rk[43];
+    uint32_t k0 = ((uint32_t)sb[ s0        & 0xFF]) |
+                  ((uint32_t)sb[ s1        & 0xFF] << 8) |
+                  ((uint32_t)sb[ s2        & 0xFF] << 16) |
+                  ((uint32_t)sb[ s3        & 0xFF] << 24);
+    uint32_t k1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
+                  ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
+    uint32_t k2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
+                  ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
+    uint32_t k3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
+                  ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
 
-    const uint8_t *ct = in + idx * 16;
-    uint8_t *pt = out + idx * 16;
-    ((uint32_t*)pt)[0] = ((const uint32_t*)ct)[0] ^ ((const uint32_t*)k)[0];
-    ((uint32_t*)pt)[1] = ((const uint32_t*)ct)[1] ^ ((const uint32_t*)k)[1];
-    ((uint32_t*)pt)[2] = ((const uint32_t*)ct)[2] ^ ((const uint32_t*)k)[2];
-    ((uint32_t*)pt)[3] = ((const uint32_t*)ct)[3] ^ ((const uint32_t*)k)[3];
+    k0 ^= rk[40];
+    k1 ^= rk[41];
+    k2 ^= rk[42];
+    k3 ^= rk[43];
+
+    uint4 ctBlock = reinterpret_cast<const uint4*>(in)[idx];
+    uint4 ptBlock = make_uint4(ctBlock.x ^ k0,
+                               ctBlock.y ^ k1,
+                               ctBlock.z ^ k2,
+                               ctBlock.w ^ k3);
+    reinterpret_cast<uint4*>(out)[idx] = ptBlock;
 }

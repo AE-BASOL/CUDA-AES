@@ -48,11 +48,11 @@ __global__ void aes128_ecb_encrypt(const uint8_t *in,
     const uint32_t *rk = d_roundKeys;         // 44 words
 
     /* ---- load 16 input bytes as 4 *little-endian* words ---- */
-    const uint8_t *p = in + idx*16;
-    uint32_t s0 = ((uint32_t*)p)[0];
-    uint32_t s1 = ((uint32_t*)p)[1];
-    uint32_t s2 = ((uint32_t*)p)[2];
-    uint32_t s3 = ((uint32_t*)p)[3];
+    uint4 block = reinterpret_cast<const uint4*>(in)[idx];
+    uint32_t s0 = block.x;
+    uint32_t s1 = block.y;
+    uint32_t s2 = block.z;
+    uint32_t s3 = block.w;
 
     /* initial AddRoundKey */
     s0 ^= rk[0];  s1 ^= rk[1];
@@ -68,21 +68,31 @@ __global__ void aes128_ecb_encrypt(const uint8_t *in,
 
     /* final round (SubBytes + ShiftRows) */
     const uint8_t *sb = sh_sbox;
-    uint8_t *dst = out + idx*16;
-    dst[ 0] = sb[ s0        & 0xFF];  dst[ 4] = sb[(s1 >>  8) & 0xFF];
-    dst[ 8] = sb[(s2 >> 16) & 0xFF];  dst[12] = sb[(s3 >> 24) & 0xFF];
-    dst[ 1] = sb[ s1        & 0xFF];  dst[ 5] = sb[(s2 >>  8) & 0xFF];
-    dst[ 9] = sb[(s3 >> 16) & 0xFF];  dst[13] = sb[(s0 >> 24) & 0xFF];
-    dst[ 2] = sb[ s2        & 0xFF];  dst[ 6] = sb[(s3 >>  8) & 0xFF];
-    dst[10] = sb[(s0 >> 16) & 0xFF];  dst[14] = sb[(s1 >> 24) & 0xFF];
-    dst[ 3] = sb[ s3        & 0xFF];  dst[ 7] = sb[(s0 >>  8) & 0xFF];
-    dst[11] = sb[(s1 >> 16) & 0xFF];  dst[15] = sb[(s2 >> 24) & 0xFF];
+    uint32_t r0 = ((uint32_t)sb[ s0        & 0xFF]) |
+                  ((uint32_t)sb[ s1        & 0xFF] << 8) |
+                  ((uint32_t)sb[ s2        & 0xFF] << 16) |
+                  ((uint32_t)sb[ s3        & 0xFF] << 24);
+    uint32_t r1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
+                  ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
+    uint32_t r2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
+                  ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
+    uint32_t r3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
+                  ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
+                  ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
+                  ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
 
     /* final AddRoundKey */
-    ((uint32_t*)dst)[0] ^= rk[40];
-    ((uint32_t*)dst)[1] ^= rk[41];
-    ((uint32_t*)dst)[2] ^= rk[42];
-    ((uint32_t*)dst)[3] ^= rk[43];
+    r0 ^= rk[40];
+    r1 ^= rk[41];
+    r2 ^= rk[42];
+    r3 ^= rk[43];
+
+    uint4 outBlock = make_uint4(r0, r1, r2, r3);
+    reinterpret_cast<uint4*>(out)[idx] = outBlock;
 }
 
 __global__ void aes128_ecb_decrypt(const uint8_t *in,
@@ -96,11 +106,11 @@ __global__ void aes128_ecb_decrypt(const uint8_t *in,
     const uint32_t *rk_last = rk + 40;        // last round key for AES-128
 
     // Load ciphertext and initial AddRoundKey with last round key
-    const uint8_t *blockPtr = in + idx * 16;
-    uint32_t s0 = ((const uint32_t*)blockPtr)[0] ^ rk_last[0];
-    uint32_t s1 = ((const uint32_t*)blockPtr)[1] ^ rk_last[1];
-    uint32_t s2 = ((const uint32_t*)blockPtr)[2] ^ rk_last[2];
-    uint32_t s3 = ((const uint32_t*)blockPtr)[3] ^ rk_last[3];
+    uint4 inBlock = reinterpret_cast<const uint4*>(in)[idx];
+    uint32_t s0 = inBlock.x ^ rk_last[0];
+    uint32_t s1 = inBlock.y ^ rk_last[1];
+    uint32_t s2 = inBlock.z ^ rk_last[2];
+    uint32_t s3 = inBlock.w ^ rk_last[3];
 
     // 9 full inverse rounds (use U-tables, as AES-256)
     uint32_t t0, t1, t2, t3;
@@ -119,28 +129,29 @@ __global__ void aes128_ecb_decrypt(const uint8_t *in,
 
     // Final round: InvShiftRows + InvSubBytes, then AddRoundKey
     const uint8_t *isbox = d_inv_sbox;
-    uint8_t *dst = out + idx*16;
+    uint32_t r0 = ((uint32_t)isbox[ s0        & 0xFF]) |
+                  ((uint32_t)isbox[ s1        & 0xFF] << 8) |
+                  ((uint32_t)isbox[ s2        & 0xFF] << 16) |
+                  ((uint32_t)isbox[ s3        & 0xFF] << 24);
+    uint32_t r1 = ((uint32_t)isbox[(s3 >>  8) & 0xFF]) |
+                  ((uint32_t)isbox[(s0 >>  8) & 0xFF] << 8) |
+                  ((uint32_t)isbox[(s1 >>  8) & 0xFF] << 16) |
+                  ((uint32_t)isbox[(s2 >>  8) & 0xFF] << 24);
+    uint32_t r2 = ((uint32_t)isbox[(s2 >> 16) & 0xFF]) |
+                  ((uint32_t)isbox[(s3 >> 16) & 0xFF] << 8) |
+                  ((uint32_t)isbox[(s0 >> 16) & 0xFF] << 16) |
+                  ((uint32_t)isbox[(s1 >> 16) & 0xFF] << 24);
+    uint32_t r3 = ((uint32_t)isbox[(s1 >> 24) & 0xFF]) |
+                  ((uint32_t)isbox[(s2 >> 24) & 0xFF] << 8) |
+                  ((uint32_t)isbox[(s3 >> 24) & 0xFF] << 16) |
+                  ((uint32_t)isbox[(s0 >> 24) & 0xFF] << 24);
 
-    dst[ 0] = isbox[ s0        & 0xFF];
-    dst[ 1] = isbox[ s1        & 0xFF];
-    dst[ 2] = isbox[ s2        & 0xFF];
-    dst[ 3] = isbox[ s3        & 0xFF];
-    dst[ 4] = isbox[(s3 >>  8) & 0xFF];
-    dst[ 5] = isbox[(s0 >>  8) & 0xFF];
-    dst[ 6] = isbox[(s1 >>  8) & 0xFF];
-    dst[ 7] = isbox[(s2 >>  8) & 0xFF];
-    dst[ 8] = isbox[(s2 >> 16) & 0xFF];
-    dst[ 9] = isbox[(s3 >> 16) & 0xFF];
-    dst[10] = isbox[(s0 >> 16) & 0xFF];
-    dst[11] = isbox[(s1 >> 16) & 0xFF];
-    dst[12] = isbox[(s1 >> 24) & 0xFF];
-    dst[13] = isbox[(s2 >> 24) & 0xFF];
-    dst[14] = isbox[(s3 >> 24) & 0xFF];
-    dst[15] = isbox[(s0 >> 24) & 0xFF];
+    r0 ^= rk[0];
+    r1 ^= rk[1];
+    r2 ^= rk[2];
+    r3 ^= rk[3];
 
-    ((uint32_t*)dst)[0] ^= rk[0];
-    ((uint32_t*)dst)[1] ^= rk[1];
-    ((uint32_t*)dst)[2] ^= rk[2];
-    ((uint32_t*)dst)[3] ^= rk[3];
+    uint4 outBlock = make_uint4(r0, r1, r2, r3);
+    reinterpret_cast<uint4*>(out)[idx] = outBlock;
 }
 
