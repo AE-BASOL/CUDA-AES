@@ -18,6 +18,7 @@ set(CUDA_SOURCES
     aes256_ecb.cu
     aes256_ctr.cu
     aes256_gcm.cu
+    main.cu
 )
 
 # Define a single executable
@@ -36,11 +37,7 @@ target_include_directories(CudaProject PRIVATE
 # Link against the CUDA runtime
 target_link_libraries(CudaProject PRIVATE
         CUDA::cudart
+        CUDA::curand
 )
 
-target_include_directories(CudaProject PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.9/include"
-)
 
-target_compile_definitions(CudaProject PRIVATE ENABLE_NVTX)
