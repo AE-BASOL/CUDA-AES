@@ -1,8 +1,12 @@
 #include "aes_common.h"
 
 extern __device__ __constant__ uint32_t d_roundKeys[60];
-extern __device__ __constant__ uint32_t d_T0[256], d_T1[256], d_T2[256], d_T3[256];
+extern __device__ __constant__ uint32_t d_T0[256];
 extern __device__ __constant__ uint8_t  d_sbox[256];
+
+__device__ __forceinline__ uint32_t rotl32(uint32_t x, unsigned r) {
+    return (x << r) | (x >> (32 - r));
+}
 
 // AES-CTR encryption and decryption are identical (XOR with keystream).
 // Each thread will generate keystream by encrypting a unique counter value and XOR with input.
@@ -12,6 +16,21 @@ extern __device__ __constant__ uint8_t  d_sbox[256];
 // This kernel processes nBlocks blocks, incrementing the counter for each block.
 
 __global__ void aes128_ctr_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
+    __shared__ uint32_t sh_T0[32][256];
+    __shared__ uint8_t  sh_sbox[32][256];
+
+    int tid = threadIdx.x;
+    if (tid < 256) {
+        uint32_t v = d_T0[tid];
+        uint8_t sbv = d_sbox[tid];
+#pragma unroll
+        for (int b = 0; b < 32; ++b) {
+            sh_T0[b][tid] = v;
+            sh_sbox[b][tid] = sbv;
+        }
+    }
+    __syncthreads();
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
     const uint32_t *rk = d_roundKeys;  // 44 words for AES-128
@@ -29,24 +48,33 @@ __global__ void aes128_ctr_encrypt(const uint8_t *in, uint8_t *out, size_t nBloc
     uint32_t s2 = (uint32_t)(ctr_hi >>  0);
     uint32_t s3 = (uint32_t)(ctr_hi >> 32);
 
-    // AES-128 encrypt the counter (similar to ECB encrypt)
+    // AES-128 encrypt the counter using shared-memory T-table (banked)
+    int bank = threadIdx.x & 31;
     s0 ^= rk[0]; s1 ^= rk[1]; s2 ^= rk[2]; s3 ^= rk[3];
     uint32_t t0, t1, t2, t3;
-    #pragma unroll
+#pragma unroll
     for (int r = 1; r <= 9; ++r) {
-        t0 = d_T0[ s0        & 0xFF] ^ d_T1[(s1 >>  8) & 0xFF] ^
-             d_T2[(s2 >> 16) & 0xFF] ^ d_T3[(s3 >> 24) & 0xFF] ^ rk[4*r + 0];
-        t1 = d_T0[ s1        & 0xFF] ^ d_T1[(s2 >>  8) & 0xFF] ^
-             d_T2[(s3 >> 16) & 0xFF] ^ d_T3[(s0 >> 24) & 0xFF] ^ rk[4*r + 1];
-        t2 = d_T0[ s2        & 0xFF] ^ d_T1[(s3 >>  8) & 0xFF] ^
-             d_T2[(s0 >> 16) & 0xFF] ^ d_T3[(s1 >> 24) & 0xFF] ^ rk[4*r + 2];
-        t3 = d_T0[ s3        & 0xFF] ^ d_T1[(s0 >>  8) & 0xFF] ^
-             d_T2[(s1 >> 16) & 0xFF] ^ d_T3[(s2 >> 24) & 0xFF] ^ rk[4*r + 3];
+        t0 = sh_T0[bank][ s0        & 0xFF] ^
+             rotl32(sh_T0[bank][(s1 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s2 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s3 >> 24) & 0xFF], 24) ^ rk[4*r + 0];
+        t1 = sh_T0[bank][ s1        & 0xFF] ^
+             rotl32(sh_T0[bank][(s2 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s3 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s0 >> 24) & 0xFF], 24) ^ rk[4*r + 1];
+        t2 = sh_T0[bank][ s2        & 0xFF] ^
+             rotl32(sh_T0[bank][(s3 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s0 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s1 >> 24) & 0xFF], 24) ^ rk[4*r + 2];
+        t3 = sh_T0[bank][ s3        & 0xFF] ^
+             rotl32(sh_T0[bank][(s0 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s1 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s2 >> 24) & 0xFF], 24) ^ rk[4*r + 3];
         s0 = t0; s1 = t1; s2 = t2; s3 = t3;
     }
     // Final round (SubBytes + ShiftRows + AddRoundKey) producing keystream block
     uint8_t k[16];
-    const uint8_t *sb = d_sbox;
+    const uint8_t *sb = sh_sbox[bank];
     ((uint32_t*)k)[0] = 0; ((uint32_t*)k)[1] = 0; ((uint32_t*)k)[2] = 0; ((uint32_t*)k)[3] = 0;
     uint8_t *ko = k;
     ko[0]  = sb[ s0        & 0xFF];  ko[1]  = sb[ s1        & 0xFF];
@@ -93,23 +121,32 @@ __global__ void aes128_ctr_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
     uint32_t s2 = (uint32_t)(ctr_hi);
     uint32_t s3 = (uint32_t)(ctr_hi >> 32);
 
+    int bank = threadIdx.x & 31;
     s0 ^= rk[0]; s1 ^= rk[1]; s2 ^= rk[2]; s3 ^= rk[3];
     uint32_t t0, t1, t2, t3;
 #pragma unroll
     for (int r = 1; r <= 9; ++r) {
-        t0 = d_T0[ s0        & 0xFF] ^ d_T1[(s1 >>  8) & 0xFF] ^
-             d_T2[(s2 >> 16) & 0xFF] ^ d_T3[(s3 >> 24) & 0xFF] ^ rk[4*r + 0];
-        t1 = d_T0[ s1        & 0xFF] ^ d_T1[(s2 >>  8) & 0xFF] ^
-             d_T2[(s3 >> 16) & 0xFF] ^ d_T3[(s0 >> 24) & 0xFF] ^ rk[4*r + 1];
-        t2 = d_T0[ s2        & 0xFF] ^ d_T1[(s3 >>  8) & 0xFF] ^
-             d_T2[(s0 >> 16) & 0xFF] ^ d_T3[(s1 >> 24) & 0xFF] ^ rk[4*r + 2];
-        t3 = d_T0[ s3        & 0xFF] ^ d_T1[(s0 >>  8) & 0xFF] ^
-             d_T2[(s1 >> 16) & 0xFF] ^ d_T3[(s2 >> 24) & 0xFF] ^ rk[4*r + 3];
+        t0 = sh_T0[bank][ s0        & 0xFF] ^
+             rotl32(sh_T0[bank][(s1 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s2 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s3 >> 24) & 0xFF], 24) ^ rk[4*r + 0];
+        t1 = sh_T0[bank][ s1        & 0xFF] ^
+             rotl32(sh_T0[bank][(s2 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s3 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s0 >> 24) & 0xFF], 24) ^ rk[4*r + 1];
+        t2 = sh_T0[bank][ s2        & 0xFF] ^
+             rotl32(sh_T0[bank][(s3 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s0 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s1 >> 24) & 0xFF], 24) ^ rk[4*r + 2];
+        t3 = sh_T0[bank][ s3        & 0xFF] ^
+             rotl32(sh_T0[bank][(s0 >>  8) & 0xFF], 8) ^
+             rotl32(sh_T0[bank][(s1 >> 16) & 0xFF], 16) ^
+             rotl32(sh_T0[bank][(s2 >> 24) & 0xFF], 24) ^ rk[4*r + 3];
         s0 = t0; s1 = t1; s2 = t2; s3 = t3;
     }
 
     uint8_t k[16];
-    const uint8_t *sb = d_sbox;
+    const uint8_t *sb = sh_sbox[bank];
     ((uint32_t*)k)[0] = 0; ((uint32_t*)k)[1] = 0; ((uint32_t*)k)[2] = 0; ((uint32_t*)k)[3] = 0;
     uint8_t *ko = k;
     ko[0]  = sb[ s0        & 0xFF];  ko[1]  = sb[ s1        & 0xFF];
