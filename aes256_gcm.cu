@@ -93,21 +93,28 @@ __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     // GHASH via warp-level XOR reduction
     uint32_t tid = threadIdx.x;
     if (tid < 32) {
+        uint64_t step_hi = 0ull, step_lo = 1ull;
+        for (int b = 0; b < 32; ++b)
+            if (32u & (1u << b))
+                gf_mul128(step_hi, step_lo, d_H_pow_hi[b], d_H_pow_lo[b]);
+
+        uint64_t pow_hi = 0ull, pow_lo = 1ull;
+        uint32_t exp = (uint32_t)(nBlocks - 1 - tid);
+        for (int b = 0; b < 32; ++b)
+            if (exp & (1u << b))
+                gf_mul128(pow_hi, pow_lo, d_H_pow_hi[b], d_H_pow_lo[b]);
+
         uint64_t accum_hi = 0ull, accum_lo = 0ull;
         for (size_t j = tid; j < nBlocks; j += 32) {
-            uint64_t c_lo = ((uint64_t*)cipher)[2*j + 0];
-            uint64_t c_hi = ((uint64_t*)cipher)[2*j + 1];
-            uint64_t pow_hi = 0ull, pow_lo = 1ull;
-#pragma unroll
-            for (int b = 0; b < 32; ++b) {
-                if ((nBlocks - j) & (1u << b)) {
-                    gf_mul128(pow_hi, pow_lo, d_H_pow_hi[b], d_H_pow_lo[b]);
-                }
-            }
-            gf_mul128(c_hi, c_lo, pow_hi, pow_lo);
-            accum_hi ^= c_hi;
-            accum_lo ^= c_lo;
+            uint64_t c_lo = ((const uint64_t*)cipher)[2*j + 0];
+            uint64_t c_hi = ((const uint64_t*)cipher)[2*j + 1];
+            uint64_t tmp_hi = c_hi, tmp_lo = c_lo;
+            gf_mul128(tmp_hi, tmp_lo, pow_hi, pow_lo);
+            accum_hi ^= tmp_hi;
+            accum_lo ^= tmp_lo;
+            gf_mul128(pow_hi, pow_lo, step_hi, step_lo);
         }
+
         for (int off = 16; off > 0; off >>= 1) {
             accum_hi ^= __shfl_xor_sync(0xFFFFFFFF, accum_hi, off);
             accum_lo ^= __shfl_xor_sync(0xFFFFFFFF, accum_lo, off);
@@ -204,21 +211,28 @@ __global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
 
     uint32_t tid = threadIdx.x;
     if (tid < 32) {
+        uint64_t step_hi = 0ull, step_lo = 1ull;
+        for (int b = 0; b < 32; ++b)
+            if (32u & (1u << b))
+                gf_mul128(step_hi, step_lo, d_H_pow_hi[b], d_H_pow_lo[b]);
+
+        uint64_t pow_hi = 0ull, pow_lo = 1ull;
+        uint32_t exp = (uint32_t)(nBlocks - 1 - tid);
+        for (int b = 0; b < 32; ++b)
+            if (exp & (1u << b))
+                gf_mul128(pow_hi, pow_lo, d_H_pow_hi[b], d_H_pow_lo[b]);
+
         uint64_t accum_hi = 0ull, accum_lo = 0ull;
         for (size_t j = tid; j < nBlocks; j += 32) {
-            uint64_t c_lo = ((uint64_t*)cipher)[2*j + 0];
-            uint64_t c_hi = ((uint64_t*)cipher)[2*j + 1];
-            uint64_t pow_hi = 0ull, pow_lo = 1ull;
-#pragma unroll
-            for (int b = 0; b < 32; ++b) {
-                if ((nBlocks - j) & (1u << b)) {
-                    gf_mul128(pow_hi, pow_lo, d_H_pow_hi[b], d_H_pow_lo[b]);
-                }
-            }
-            gf_mul128(c_hi, c_lo, pow_hi, pow_lo);
-            accum_hi ^= c_hi;
-            accum_lo ^= c_lo;
+            uint64_t c_lo = ((const uint64_t*)cipher)[2*j + 0];
+            uint64_t c_hi = ((const uint64_t*)cipher)[2*j + 1];
+            uint64_t tmp_hi = c_hi, tmp_lo = c_lo;
+            gf_mul128(tmp_hi, tmp_lo, pow_hi, pow_lo);
+            accum_hi ^= tmp_hi;
+            accum_lo ^= tmp_lo;
+            gf_mul128(pow_hi, pow_lo, step_hi, step_lo);
         }
+
         for (int off = 16; off > 0; off >>= 1) {
             accum_hi ^= __shfl_xor_sync(0xFFFFFFFF, accum_hi, off);
             accum_lo ^= __shfl_xor_sync(0xFFFFFFFF, accum_lo, off);
