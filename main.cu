@@ -121,7 +121,7 @@ void init_T_tables() {
         uint8_t s2 = xtime(s);        // 2 · s   (in GF(2^8))
         uint8_t s3 = s2 ^ s;          // 3 · s
 
-        /*  little-endian order :  [   3·s |   s |   s |   2·s ]  */
+        /*  little-endian order :  [   3·s |   s |   s |   2·s ]
         h_T0[i] =  (uint32_t)s2        |
                   ((uint32_t)s  <<  8) |
                   ((uint32_t)s  << 16) |

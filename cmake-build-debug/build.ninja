@@ -49,9 +49,9 @@ cmake_ninja_workdir = C$:\Users\efebasol\CLionProjects\CudaProject\cmake-build-d
 
 build cmake_object_order_depends_target_CudaProject: phony || .
 
-build CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes128_ctr.cu || cmake_object_order_depends_target_CudaProject
+build CMakeFiles\CudaProject.dir\aes_tables.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes_tables.cu || cmake_object_order_depends_target_CudaProject
   DEFINES = -DENABLE_NVTX
-  DEP_FILE = CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj.d
+  DEP_FILE = CMakeFiles\CudaProject.dir\aes_tables.cu.obj.d
   FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
   INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
   OBJECT_DIR = CMakeFiles\CudaProject.dir
@@ -69,9 +69,9 @@ build CMakeFiles\CudaProject.dir\aes128_ecb.cu.obj: CUDA_COMPILER__CudaProject_u
   TARGET_COMPILE_PDB = CMakeFiles\CudaProject.dir\
   TARGET_PDB = CudaProject.pdb
 
-build CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes128_gcm.cu || cmake_object_order_depends_target_CudaProject
+build CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes128_ctr.cu || cmake_object_order_depends_target_CudaProject
   DEFINES = -DENABLE_NVTX
-  DEP_FILE = CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj.d
+  DEP_FILE = CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj.d
   FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
   INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
   OBJECT_DIR = CMakeFiles\CudaProject.dir
@@ -79,9 +79,9 @@ build CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj: CUDA_COMPILER__CudaProject_u
   TARGET_COMPILE_PDB = CMakeFiles\CudaProject.dir\
   TARGET_PDB = CudaProject.pdb
 
-build CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes256_ctr.cu || cmake_object_order_depends_target_CudaProject
+build CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes128_gcm.cu || cmake_object_order_depends_target_CudaProject
   DEFINES = -DENABLE_NVTX
-  DEP_FILE = CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj.d
+  DEP_FILE = CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj.d
   FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
   INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
   OBJECT_DIR = CMakeFiles\CudaProject.dir
@@ -99,29 +99,19 @@ build CMakeFiles\CudaProject.dir\aes256_ecb.cu.obj: CUDA_COMPILER__CudaProject_u
   TARGET_COMPILE_PDB = CMakeFiles\CudaProject.dir\
   TARGET_PDB = CudaProject.pdb
 
+build CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes256_ctr.cu || cmake_object_order_depends_target_CudaProject
+  DEFINES = -DENABLE_NVTX
+  DEP_FILE = CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj.d
+  FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
+  INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
+  OBJECT_DIR = CMakeFiles\CudaProject.dir
+  OBJECT_FILE_DIR = CMakeFiles\CudaProject.dir
+  TARGET_COMPILE_PDB = CMakeFiles\CudaProject.dir\
+  TARGET_PDB = CudaProject.pdb
+
 build CMakeFiles\CudaProject.dir\aes256_gcm.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes256_gcm.cu || cmake_object_order_depends_target_CudaProject
   DEFINES = -DENABLE_NVTX
   DEP_FILE = CMakeFiles\CudaProject.dir\aes256_gcm.cu.obj.d
-  FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
-  INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
-  OBJECT_DIR = CMakeFiles\CudaProject.dir
-  OBJECT_FILE_DIR = CMakeFiles\CudaProject.dir
-  TARGET_COMPILE_PDB = CMakeFiles\CudaProject.dir\
-  TARGET_PDB = CudaProject.pdb
-
-build CMakeFiles\CudaProject.dir\aes_tables.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\aes_tables.cu || cmake_object_order_depends_target_CudaProject
-  DEFINES = -DENABLE_NVTX
-  DEP_FILE = CMakeFiles\CudaProject.dir\aes_tables.cu.obj.d
-  FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
-  INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
-  OBJECT_DIR = CMakeFiles\CudaProject.dir
-  OBJECT_FILE_DIR = CMakeFiles\CudaProject.dir
-  TARGET_COMPILE_PDB = CMakeFiles\CudaProject.dir\
-  TARGET_PDB = CudaProject.pdb
-
-build CMakeFiles\CudaProject.dir\main.cu.obj: CUDA_COMPILER__CudaProject_unscanned_Debug C$:\Users\efebasol\CLionProjects\CudaProject\main.cu || cmake_object_order_depends_target_CudaProject
-  DEFINES = -DENABLE_NVTX
-  DEP_FILE = CMakeFiles\CudaProject.dir\main.cu.obj.d
   FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
   INCLUDES = -IC:\Users\efebasol\CLionProjects\CudaProject -isystem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include"
   OBJECT_DIR = CMakeFiles\CudaProject.dir
@@ -147,7 +137,7 @@ build CMakeFiles\CudaProject.dir\main_kat.cu.obj: CUDA_COMPILER__CudaProject_uns
 #############################################
 # Link the executable CMakeFiles\CudaProject.dir\cmake_device_link.obj
 
-build CMakeFiles\CudaProject.dir\cmake_device_link.obj: CUDA_EXECUTABLE_DEVICE_LINKER__CudaProject_Debug CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj CMakeFiles\CudaProject.dir\aes128_ecb.cu.obj CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj CMakeFiles\CudaProject.dir\aes256_ecb.cu.obj CMakeFiles\CudaProject.dir\aes256_gcm.cu.obj CMakeFiles\CudaProject.dir\aes_tables.cu.obj CMakeFiles\CudaProject.dir\main.cu.obj CMakeFiles\CudaProject.dir\main_kat.cu.obj | C$:\Program$ Files\NVIDIA$ GPU$ Computing$ Toolkit\CUDA\v12.9\lib\x64\cudart.lib
+build CMakeFiles\CudaProject.dir\cmake_device_link.obj: CUDA_EXECUTABLE_DEVICE_LINKER__CudaProject_Debug CMakeFiles\CudaProject.dir\aes_tables.cu.obj CMakeFiles\CudaProject.dir\aes128_ecb.cu.obj CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj CMakeFiles\CudaProject.dir\aes256_ecb.cu.obj CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj CMakeFiles\CudaProject.dir\aes256_gcm.cu.obj CMakeFiles\CudaProject.dir\main_kat.cu.obj | C$:\Program$ Files\NVIDIA$ GPU$ Computing$ Toolkit\CUDA\v12.9\lib\x64\cudart.lib
   LANGUAGE_COMPILE_FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
   LINK_LIBRARIES = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64\cudart.lib" cudadevrt.lib cudart_static.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
   OBJECT_DIR = CMakeFiles\CudaProject.dir
@@ -163,7 +153,7 @@ build CMakeFiles\CudaProject.dir\cmake_device_link.obj: CUDA_EXECUTABLE_DEVICE_L
 #############################################
 # Link the executable CudaProject.exe
 
-build CudaProject.exe: CUDA_EXECUTABLE_LINKER__CudaProject_Debug CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj CMakeFiles\CudaProject.dir\aes128_ecb.cu.obj CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj CMakeFiles\CudaProject.dir\aes256_ecb.cu.obj CMakeFiles\CudaProject.dir\aes256_gcm.cu.obj CMakeFiles\CudaProject.dir\aes_tables.cu.obj CMakeFiles\CudaProject.dir\main.cu.obj CMakeFiles\CudaProject.dir\main_kat.cu.obj CMakeFiles\CudaProject.dir\cmake_device_link.obj | C$:\Program$ Files\NVIDIA$ GPU$ Computing$ Toolkit\CUDA\v12.9\lib\x64\cudart.lib
+build CudaProject.exe: CUDA_EXECUTABLE_LINKER__CudaProject_Debug CMakeFiles\CudaProject.dir\aes_tables.cu.obj CMakeFiles\CudaProject.dir\aes128_ecb.cu.obj CMakeFiles\CudaProject.dir\aes128_ctr.cu.obj CMakeFiles\CudaProject.dir\aes128_gcm.cu.obj CMakeFiles\CudaProject.dir\aes256_ecb.cu.obj CMakeFiles\CudaProject.dir\aes256_ctr.cu.obj CMakeFiles\CudaProject.dir\aes256_gcm.cu.obj CMakeFiles\CudaProject.dir\main_kat.cu.obj CMakeFiles\CudaProject.dir\cmake_device_link.obj | C$:\Program$ Files\NVIDIA$ GPU$ Computing$ Toolkit\CUDA\v12.9\lib\x64\cudart.lib
   FLAGS = -D_WINDOWS -Xcompiler=" /EHsc" -Xcompiler=" -Ob0 -Od /RTC1" "--generate-code=arch=compute_86,code=[compute_86,sm_86]" -Xcompiler=-MDd -Xcompiler=-Zi
   LINK_FLAGS = /debug /INCREMENTAL
   LINK_LIBRARIES = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64\cudart.lib"  cudadevrt.lib  cudart_static.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib

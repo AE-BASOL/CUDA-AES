@@ -1,0 +1,69 @@
+# === General ===
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+Thumbs.db
+
+# === Build ===
+cmake-build-*/
+build/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+install/
+*.sln
+*.vcxproj*
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+compile_commands.json
+
+# === CUDA-specific ===
+*.cu.cpp
+*.cubin
+*.ptx
+*.linkinfo
+*.fatbin
+
+# === CLion / JetBrains ===
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# === NSight Systems & Compute Reports ===
+*.qdrep
+*.nsys-rep
+*.sqlite
+*.nvvp
+*.ncu-rep
+
+# === Test/Benchmark Outputs ===
+*.bin
+*.out
+*.exe
+test_output/
+kat_output/
+results/
+
+# === Backup and generated ===
+*~
+*.old
+*.orig
+
+# === LaTeX build files ===
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.pdf
