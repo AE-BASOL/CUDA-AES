@@ -131,3 +131,9 @@ __global__ void aes_ecb_decrypt(const uint8_t* __restrict__ in,
 
     reinterpret_cast<uint4*>(out)[idx] = make_uint4(r0,r1,r2,r3);
 }
+
+// Explicit instantiations for AES-128 and AES-256
+template __global__ void aes_ecb_encrypt<10>(const uint8_t*, uint8_t*, size_t);
+template __global__ void aes_ecb_encrypt<14>(const uint8_t*, uint8_t*, size_t);
+template __global__ void aes_ecb_decrypt<10>(const uint8_t*, uint8_t*, size_t);
+template __global__ void aes_ecb_decrypt<14>(const uint8_t*, uint8_t*, size_t);

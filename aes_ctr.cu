@@ -107,3 +107,9 @@ __global__ void aes_ctr_decrypt(const uint8_t* __restrict__ in,
                                 size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     aes_ctr_encrypt<ROUNDS>(in, out, nBlocks, ctrLo, ctrHi);
 }
+
+// Explicit instantiations for AES-128 and AES-256
+template __global__ void aes_ctr_encrypt<10>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+template __global__ void aes_ctr_encrypt<14>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+template __global__ void aes_ctr_decrypt<10>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
+template __global__ void aes_ctr_decrypt<14>(const uint8_t*, uint8_t*, size_t, uint64_t, uint64_t);
