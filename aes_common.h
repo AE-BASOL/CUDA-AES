@@ -25,20 +25,35 @@ extern __device__ __constant__ uint64_t d_H_pow_lo[32];
 // Modes: ECB (electronic codebook), CTR (counter), GCM (Galois/Counter Mode).
 // ----------------------------------------------------------
 
-    __global__ void aes128_ecb_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks);
-    __global__ void aes128_ecb_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks);
-    __global__ void aes256_ecb_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks);
-    __global__ void aes256_ecb_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks);
+template<int ROUNDS>
+__global__ void aes_ecb_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks);
+template<int ROUNDS>
+__global__ void aes_ecb_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks);
 
-    __global__ void aes128_ctr_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi);
-    __global__ void aes128_ctr_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi);
-    __global__ void aes256_ctr_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi);
-    __global__ void aes256_ctr_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi);
+template<int ROUNDS>
+__global__ void aes_ctr_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi);
+template<int ROUNDS>
+__global__ void aes_ctr_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi);
 
-    __global__ void aes128_gcm_encrypt(const uint8_t* __restrict__ plain, uint8_t* __restrict__ cipher, size_t nBlocks, const uint8_t* __restrict__ iv, uint8_t* __restrict__ tagOut);
-    __global__ void aes128_gcm_decrypt(const uint8_t* __restrict__ cipher, uint8_t* __restrict__ plain, size_t nBlocks, const uint8_t* __restrict__ iv, const uint8_t* __restrict__ tag, uint8_t* __restrict__ tagOut);
-    __global__ void aes256_gcm_encrypt(const uint8_t* __restrict__ plain, uint8_t* __restrict__ cipher, size_t nBlocks, const uint8_t* __restrict__ iv, uint8_t* __restrict__ tagOut);
-    __global__ void aes256_gcm_decrypt(const uint8_t* __restrict__ cipher, uint8_t* __restrict__ plain, size_t nBlocks, const uint8_t* __restrict__ iv, const uint8_t* __restrict__ tag, uint8_t* __restrict__ tagOut);
+template<int ROUNDS>
+__global__ void aes_gcm_encrypt(const uint8_t* __restrict__ plain, uint8_t* __restrict__ cipher, size_t nBlocks, const uint8_t* __restrict__ iv, uint8_t* __restrict__ tagOut);
+template<int ROUNDS>
+__global__ void aes_gcm_decrypt(const uint8_t* __restrict__ cipher, uint8_t* __restrict__ plain, size_t nBlocks, const uint8_t* __restrict__ iv, const uint8_t* __restrict__ tag, uint8_t* __restrict__ tagOut);
+
+#define aes128_ecb_encrypt aes_ecb_encrypt<10>
+#define aes128_ecb_decrypt aes_ecb_decrypt<10>
+#define aes256_ecb_encrypt aes_ecb_encrypt<14>
+#define aes256_ecb_decrypt aes_ecb_decrypt<14>
+
+#define aes128_ctr_encrypt aes_ctr_encrypt<10>
+#define aes128_ctr_decrypt aes_ctr_decrypt<10>
+#define aes256_ctr_encrypt aes_ctr_encrypt<14>
+#define aes256_ctr_decrypt aes_ctr_decrypt<14>
+
+#define aes128_gcm_encrypt aes_gcm_encrypt<10>
+#define aes128_gcm_decrypt aes_gcm_decrypt<10>
+#define aes256_gcm_encrypt aes_gcm_encrypt<14>
+#define aes256_gcm_decrypt aes_gcm_decrypt<14>
 
 
 // ----------------------------------------------------------

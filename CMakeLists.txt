@@ -12,12 +12,9 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 # Explicitly list CUDA source files
 set(CUDA_SOURCES
     aes_tables.cu
-    aes128_ecb.cu
-    aes128_ctr.cu
-    aes128_gcm.cu
-    aes256_ecb.cu
-    aes256_ctr.cu
-    aes256_gcm.cu
+    aes_ecb.cu
+    aes_ctr.cu
+    aes_gcm.cu
     main_kat.cu
 )
 
