@@ -8,33 +8,59 @@ extern __device__ __constant__ uint8_t  d_sbox[256];
 
 // Multiply two 128-bit values (A * B) in GF(2^128) with the GCM reduction polynomial.
 // Inputs/outputs are in 64-bit high/low parts.
-static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al, uint64_t Bh, uint64_t Bl) {
-    // Implements bitwise multiplication with reduction: O(128) steps
+static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al,
+                                        uint64_t Bh, uint64_t Bl) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+    // Use carry-less multiply instructions when available
+    uint64_t p0_lo, p0_hi, p1_lo, p1_hi, p2_lo, p2_hi, p3_lo, p3_hi;
+    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p0_lo) : "l"(Al), "l"(Bl));
+    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p0_hi) : "l"(Al), "l"(Bl));
+    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p1_lo) : "l"(Al), "l"(Bh));
+    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p1_hi) : "l"(Al), "l"(Bh));
+    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p2_lo) : "l"(Ah), "l"(Bl));
+    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p2_hi) : "l"(Ah), "l"(Bl));
+    asm volatile("clmul.lo.u64 %0, %1, %2;" : "=l"(p3_lo) : "l"(Ah), "l"(Bh));
+    asm volatile("clmul.hi.u64 %0, %1, %2;" : "=l"(p3_hi) : "l"(Ah), "l"(Bh));
+
+    uint64_t r0 = p0_lo;
+    uint64_t r1 = p0_hi ^ p1_lo ^ p2_lo;
+    uint64_t r2 = p1_hi ^ p2_hi ^ p3_lo;
+    uint64_t r3 = p3_hi;
+
+    // Reduce 256-bit result modulo x^128 + x^7 + x^2 + x + 1
+    const uint64_t R = 0xE100000000000000ULL;
+    for (int i = 0; i < 128; ++i) {
+        uint64_t carry = r3 >> 63;
+        r3 = (r3 << 1) | (r2 >> 63);
+        r2 = (r2 << 1) | (r1 >> 63);
+        r1 = (r1 << 1) | (r0 >> 63);
+        r0 <<= 1;
+        if (carry)
+            r0 ^= R;
+    }
+    Ah = r1;
+    Al = r0;
+#else
+    // Fallback portable implementation
     uint64_t Zh = 0ull, Zl = 0ull;
     uint64_t Vh = Bh, Vl = Bl;
-    // GF(2^128) irreducible polynomial: x^128 + x^7 + x^2 + x + 1 (0xE100000000000000 as 128-bit)
-    const uint64_t R = 0xE100000000000000ULL;  // Represents polynomial (1 followed by 0xE1)
+    const uint64_t R = 0xE100000000000000ULL;
     for (int i = 0; i < 128; ++i) {
-        if (Al & 1ULL) {  // if LSB of A is 1, add V to Z
+        if (Al & 1ULL) {
             Zl ^= Vl;
             Zh ^= Vh;
         }
-        // Carry for reduction = LSB of V
         bool carry = (Vl & 1ULL);
-        // Shift V right by 1
         Vl = (Vl >> 1) | (Vh << 63);
-        Vh = (Vh >> 1);
-        if (carry) {
-            Vh ^= R;  // XOR high part with reduction constant if carry out
-        }
-        // Shift A right by 1 (to process next bit)
-        bool a_carry = (Al & 1ULL);
+        Vh >>= 1;
+        if (carry)
+            Vh ^= R;
         Al = (Al >> 1) | (Ah << 63);
-        Ah = (Ah >> 1);
-        // (We don't actually use a_carry here because we already used A's LSB for if)
+        Ah >>= 1;
     }
     Ah = Zh;
     Al = Zl;
+#endif
 }
 
 // AES-128-GCM encryption kernel
@@ -43,9 +69,15 @@ __global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     // Use 256 threads: parallelize CTR encryption, then do GHASH in a single warp for tag.
     // nBlocks is number of 16-byte blocks of plaintext.
     __shared__ uint64_t sh_H_hi, sh_H_lo;
-    // Shared memory for parallel GHASH reduction
+    // Shared memory for GHASH reduction and powers of H
     __shared__ uint64_t partial_tag_hi[256];
     __shared__ uint64_t partial_tag_lo[256];
+    const int MAX_POW_BITS = 27;
+    __shared__ uint64_t pow_H_hi[MAX_POW_BITS];
+    __shared__ uint64_t pow_H_lo[MAX_POW_BITS];
+    const int MAX_POW_BITS = 27; // support messages up to 2^27 blocks
+    __shared__ uint64_t pow_H_hi[MAX_POW_BITS];
+    __shared__ uint64_t pow_H_lo[MAX_POW_BITS];
 
     // Compute hash subkey H = AES(Key, 0^128) in thread 0
     if (threadIdx.x == 0) {
@@ -82,6 +114,21 @@ __global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
         // Now buf[0..15] is H (16 bytes)
         sh_H_lo = ((uint64_t*)buf)[0];
         sh_H_hi = ((uint64_t*)buf)[1];
+    }
+    __syncthreads();
+
+    // Precompute powers of H in parallel
+    for (int k = threadIdx.x; k < MAX_POW_BITS; k += blockDim.x) {
+        uint64_t ph = 0ull, pl = 1ull;
+        uint64_t bh = sh_H_hi, bl = sh_H_lo;
+        unsigned exp = 1u << k;
+        while (exp) {
+            if (exp & 1u) gf_mul128(ph, pl, bh, bl);
+            exp >>= 1;
+            if (exp) gf_mul128(bh, bl, bh, bl);
+        }
+        pow_H_hi[k] = ph;
+        pow_H_lo[k] = pl;
     }
     __syncthreads();
 
@@ -157,14 +204,14 @@ __global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     for (size_t i = tid; i < nBlocks; i += blockDim.x) {
         uint64_t c_l = ((uint64_t*)cipher)[2*i + 0];
         uint64_t c_h = ((uint64_t*)cipher)[2*i + 1];
-        // Compute H^(nBlocks - i)
-        uint64_t pow_h = 0ull, pow_l = 1ull;
-        uint64_t base_h = sh_H_hi, base_l = sh_H_lo;
         size_t exp = nBlocks - i;
-        while (exp) {
-            if (exp & 1) gf_mul128(pow_h, pow_l, base_h, base_l);
-            exp >>= 1;
-            if (exp) gf_mul128(base_h, base_l, base_h, base_l);
+        uint64_t pow_h = 0ull, pow_l = 1ull;
+        for (int b = 0; b < MAX_POW_BITS; ++b) {
+            if (exp & (1u << b)) {
+                uint64_t ph = pow_H_hi[b];
+                uint64_t pl = pow_H_lo[b];
+                gf_mul128(pow_h, pow_l, ph, pl);
+            }
         }
         gf_mul128(c_h, c_l, pow_h, pow_l);
         partial_h ^= c_h;
@@ -226,6 +273,17 @@ __global__ void aes128_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
         ((uint32_t*)buf)[3] ^= rk[43];
         sh_H_lo = ((uint64_t*)buf)[0];
         sh_H_hi = ((uint64_t*)buf)[1];
+    }
+    __syncthreads();
+
+    for (int k = threadIdx.x; k < MAX_POW_BITS; k += blockDim.x) {
+        uint64_t ph=0ull, pl=1ull, bh=sh_H_hi, bl=sh_H_lo; unsigned exp=1u<<k;
+        while (exp) {
+            if (exp & 1u) gf_mul128(ph, pl, bh, bl);
+            exp >>= 1;
+            if (exp) gf_mul128(bh, bl, bh, bl);
+        }
+        pow_H_hi[k]=ph; pow_H_lo[k]=pl;
     }
     __syncthreads();
 
@@ -291,13 +349,12 @@ __global__ void aes128_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
     for (size_t i = tid; i < nBlocks; i += blockDim.x) {
         uint64_t c_l = ((uint64_t*)cipher)[2*i + 0];
         uint64_t c_h = ((uint64_t*)cipher)[2*i + 1];
-        uint64_t pow_h = 0ull, pow_l = 1ull;
-        uint64_t base_h = sh_H_hi, base_l = sh_H_lo;
         size_t exp = nBlocks - i;
-        while (exp) {
-            if (exp & 1) gf_mul128(pow_h, pow_l, base_h, base_l);
-            exp >>= 1;
-            if (exp) gf_mul128(base_h, base_l, base_h, base_l);
+        uint64_t pow_h = 0ull, pow_l = 1ull;
+        for (int b=0;b<MAX_POW_BITS;++b) {
+            if (exp & (1u<<b)) {
+                gf_mul128(pow_h, pow_l, pow_H_hi[b], pow_H_lo[b]);
+            }
         }
         gf_mul128(c_h, c_l, pow_h, pow_l);
         partial_h ^= c_h;
