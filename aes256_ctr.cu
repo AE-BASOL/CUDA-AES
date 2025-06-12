@@ -16,7 +16,7 @@ extern __device__ __constant__ uint8_t  d_sbox[256];
              sh_T2[((s1)>>16)&0xFF] ^ sh_T3[((s2)>>24)&0xFF] ^ (rk)[3];         \
     } while (0)
 
-__global__ void aes256_ctr_encrypt(const uint8_t * __restrict__ in, uint8_t * __restrict__ out,
+__global__ void aes256_ctr_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out,
                                    size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     const size_t stride = blockDim.x * gridDim.x;
@@ -167,7 +167,7 @@ __global__ void aes256_ctr_encrypt(const uint8_t * __restrict__ in, uint8_t * __
     }
 }
 
-__global__ void aes256_ctr_decrypt(const uint8_t * __restrict__ in, uint8_t * __restrict__ out,
+__global__ void aes256_ctr_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out,
                                    size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     // CTR decryption mirrors encryption; generate the same keystream and XOR.
 

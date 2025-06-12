@@ -23,7 +23,7 @@ extern __device__ __constant__ uint8_t  d_sbox[256];
 // (including the 32-bit initial counter in its low half) and ctrHi the upper 64 bits (often derived from IV).
 // This kernel processes nBlocks blocks, incrementing the counter for each block.
 
-__global__ void aes128_ctr_encrypt(const uint8_t * __restrict__ in, uint8_t * __restrict__ out,
+__global__ void aes128_ctr_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out,
                                    size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     const size_t stride = blockDim.x * gridDim.x;
@@ -158,7 +158,7 @@ __global__ void aes128_ctr_encrypt(const uint8_t * __restrict__ in, uint8_t * __
     }
 }
 
-__global__ void aes128_ctr_decrypt(const uint8_t * __restrict__ in, uint8_t * __restrict__ out,
+__global__ void aes128_ctr_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out,
                                    size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     // CTR decryption mirrors encryption; generate the same keystream and XOR
     // with the input ciphertext to recover plaintext.

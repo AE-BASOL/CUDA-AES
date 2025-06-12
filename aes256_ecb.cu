@@ -30,7 +30,7 @@ extern __device__ __constant__ uint8_t  d_inv_sbox[256];
          d_U2[(s1 >> 16) & 0xFF] ^ d_U3[(s0 >> 24) & 0xFF] ^ (rk)[3]; \
 }
 
-__global__ void aes256_ecb_encrypt(const uint8_t * __restrict__ in, uint8_t * __restrict__ out, size_t nBlocks) {
+__global__ void aes256_ecb_encrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
     __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
@@ -92,7 +92,7 @@ __global__ void aes256_ecb_encrypt(const uint8_t * __restrict__ in, uint8_t * __
     reinterpret_cast<uint4*>(out)[idx] = outBlock;
 }
 
-__global__ void aes256_ecb_decrypt(const uint8_t * __restrict__ in, uint8_t * __restrict__ out, size_t nBlocks) {
+__global__ void aes256_ecb_decrypt(const uint8_t* __restrict__ in, uint8_t* __restrict__ out, size_t nBlocks) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= nBlocks) return;
     const uint32_t *rk = d_roundKeys;
