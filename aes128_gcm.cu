@@ -6,6 +6,9 @@ extern __device__ __constant__ uint32_t d_roundKeys[60];
 extern __device__ __constant__ uint32_t d_T0[256], d_T1[256], d_T2[256], d_T3[256];
 extern __device__ __constant__ uint8_t  d_sbox[256];
 
+// Maximum exponent bits used for powers of H (supports up to 2^27 blocks)
+static const int MAX_POW_BITS = 27;
+
 // Multiply two 128-bit values (A * B) in GF(2^128) with the GCM reduction polynomial.
 // Inputs/outputs are in 64-bit high/low parts.
 static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al,
@@ -72,10 +75,6 @@ __global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t
     // Shared memory for GHASH reduction and powers of H
     __shared__ uint64_t partial_tag_hi[256];
     __shared__ uint64_t partial_tag_lo[256];
-    const int MAX_POW_BITS = 27;
-    __shared__ uint64_t pow_H_hi[MAX_POW_BITS];
-    __shared__ uint64_t pow_H_lo[MAX_POW_BITS];
-    const int MAX_POW_BITS = 27; // support messages up to 2^27 blocks
     __shared__ uint64_t pow_H_hi[MAX_POW_BITS];
     __shared__ uint64_t pow_H_lo[MAX_POW_BITS];
 
@@ -243,6 +242,8 @@ __global__ void aes128_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t
     __shared__ uint64_t sh_H_hi, sh_H_lo;
     __shared__ uint64_t partial_tag_hi[256];
     __shared__ uint64_t partial_tag_lo[256];
+    __shared__ uint64_t pow_H_hi[MAX_POW_BITS];
+    __shared__ uint64_t pow_H_lo[MAX_POW_BITS];
 
     if (threadIdx.x == 0) {
         uint32_t s0=0, s1=0, s2=0, s3=0;
