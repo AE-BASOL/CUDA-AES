@@ -149,6 +149,7 @@ __global__ void aes128_ecb_decrypt(const uint8_t* __restrict__ in,
     for (size_t blk = tid * 2; blk < nBlocks; blk += stride * 2) {
         size_t blk2 = blk + 1;
         uint4 inBlock = in4[blk];
+        // Start decryption from round key 40 as AES-128 only has 10 rounds
         uint32_t s0 = inBlock.x ^ rk[40];
         uint32_t s1 = inBlock.y ^ rk[41];
         uint32_t s2 = inBlock.z ^ rk[42];
@@ -156,6 +157,7 @@ __global__ void aes128_ecb_decrypt(const uint8_t* __restrict__ in,
 
         uint32_t t0,t1,t2,t3;
 #pragma unroll
+        // 9 full rounds processed in reverse order
         for (int r = 36; r >= 4; r -= 4) {
             DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk + r);
             s0=t0; s1=t1; s2=t2; s3=t3;
@@ -184,10 +186,12 @@ __global__ void aes128_ecb_decrypt(const uint8_t* __restrict__ in,
 
         if (blk2 < nBlocks) {
             inBlock = in4[blk2];
+            // Second block uses the same starting round key
             s0 = inBlock.x ^ rk[40];
             s1 = inBlock.y ^ rk[41];
             s2 = inBlock.z ^ rk[42];
             s3 = inBlock.w ^ rk[43];
+            // ... and the same 9-round reverse loop
             for (int r = 36; r >= 4; r -= 4) {
                 DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk + r);
                 s0=t0; s1=t1; s2=t2; s3=t3;
