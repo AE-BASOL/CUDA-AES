@@ -28,10 +28,8 @@ static __device__ inline void gf_mul128(uint64_t &Ah, uint64_t &Al, uint64_t Bh,
             Vh ^= R;  // XOR high part with reduction constant if carry out
         }
         // Shift A right by 1 (to process next bit)
-        bool a_carry = (Al & 1ULL);
         Al = (Al >> 1) | (Ah << 63);
         Ah = (Ah >> 1);
-        // (We don't actually use a_carry here because we already used A's LSB for if)
     }
     Ah = Zh;
     Al = Zl;

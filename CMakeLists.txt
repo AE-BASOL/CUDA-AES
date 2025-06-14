@@ -12,11 +12,9 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 # Explicitly list CUDA source files
 set(CUDA_SOURCES
     aes_tables.cu
-    aes128_ecb.cu
-    aes128_ctr.cu
+        aes128_ctr.cu
     aes128_gcm.cu
-    aes256_ecb.cu
-    aes256_ctr.cu
+        aes256_ctr.cu
     aes256_gcm.cu
     main.cu
 )
@@ -45,3 +43,20 @@ target_include_directories(CudaProject PRIVATE
 )
 
 target_compile_definitions(CudaProject PRIVATE ENABLE_NVTX)
+
+
+# 1. CUDA derleyicisine özel optimize bayrakları
+target_compile_options(CudaProject PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math -lineinfo --ptxas-options=-v>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3>
+)
+
+# 2. Host (C++) tarafı için genel optimizasyon
+target_compile_options(CudaProject PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-O3 /EHsc>
+)
+
+# 3. (Opsiyonel) Kayıt sayısını sınırlayarak ilave latency azaltma
+set_property(TARGET CudaProject PROPERTY CUDA_ARCHITECTURES 86)
+set_source_files_properties(${CUDA_SOURCES} PROPERTIES
+        CUDA_MAXIMUM_REGISTER_COUNT 64)  # ya da 128
