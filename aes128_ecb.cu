@@ -129,21 +129,23 @@ __global__ void aes128_ecb_decrypt(const uint8_t *in,
 
     // Final round: InvShiftRows + InvSubBytes, then AddRoundKey
     const uint8_t *isbox = d_inv_sbox;
+    // Apply InvShiftRows and InvSubBytes in one step, matching little-endian
+    // state layout. Rows are rotated right by 0,1,2,3 bytes respectively.
     uint32_t r0 = ((uint32_t)isbox[ s0        & 0xFF]) |
-                  ((uint32_t)isbox[ s1        & 0xFF] << 8) |
-                  ((uint32_t)isbox[ s2        & 0xFF] << 16) |
-                  ((uint32_t)isbox[ s3        & 0xFF] << 24);
-    uint32_t r1 = ((uint32_t)isbox[(s3 >>  8) & 0xFF]) |
+                  ((uint32_t)isbox[(s3 >>  8) & 0xFF] << 8) |
+                  ((uint32_t)isbox[(s2 >> 16) & 0xFF] << 16) |
+                  ((uint32_t)isbox[(s1 >> 24) & 0xFF] << 24);
+    uint32_t r1 = ((uint32_t)isbox[ s1        & 0xFF]) |
                   ((uint32_t)isbox[(s0 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s1 >>  8) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s2 >>  8) & 0xFF] << 24);
-    uint32_t r2 = ((uint32_t)isbox[(s2 >> 16) & 0xFF]) |
-                  ((uint32_t)isbox[(s3 >> 16) & 0xFF] << 8) |
+                  ((uint32_t)isbox[(s3 >> 16) & 0xFF] << 16) |
+                  ((uint32_t)isbox[(s2 >> 24) & 0xFF] << 24);
+    uint32_t r2 = ((uint32_t)isbox[ s2        & 0xFF]) |
+                  ((uint32_t)isbox[(s1 >>  8) & 0xFF] << 8) |
                   ((uint32_t)isbox[(s0 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s1 >> 16) & 0xFF] << 24);
-    uint32_t r3 = ((uint32_t)isbox[(s1 >> 24) & 0xFF]) |
-                  ((uint32_t)isbox[(s2 >> 24) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s3 >> 24) & 0xFF] << 16) |
+                  ((uint32_t)isbox[(s3 >> 24) & 0xFF] << 24);
+    uint32_t r3 = ((uint32_t)isbox[ s3        & 0xFF]) |
+                  ((uint32_t)isbox[(s2 >>  8) & 0xFF] << 8) |
+                  ((uint32_t)isbox[(s1 >> 16) & 0xFF] << 16) |
                   ((uint32_t)isbox[(s0 >> 24) & 0xFF] << 24);
 
     r0 ^= rk[0];
