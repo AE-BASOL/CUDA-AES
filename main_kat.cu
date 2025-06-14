@@ -5,6 +5,7 @@
 #include <vector>
 #include <random>
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 #include "aes_common.h"
 #define ENABLE_NVTX
@@ -25,6 +26,24 @@ static void printHex(const char *label, const uint8_t *buf, size_t len) {
     printf("%s:", label);
     for (size_t i = 0; i < len; ++i) printf(" %02x", buf[i]);
     printf("\n");
+}
+
+// Debug helper to print round keys
+static void printKeySchedule(const uint32_t *keys, size_t numWords, const char *label) {
+    std::cout << label << ": ";
+    for (size_t i = 0; i < numWords; ++i) {
+        std::cout << std::hex << std::setfill('0') << std::setw(8) << keys[i] << " ";
+    }
+    std::cout << std::dec << std::endl;
+}
+
+// Debug helper to print input/plaintext bytes
+static void printInputData(const uint8_t *data, size_t len, const char *label) {
+    std::cout << label << ": ";
+    for (size_t i = 0; i < len; ++i) {
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)data[i] << " ";
+    }
+    std::cout << std::dec << std::endl;
 }
 
 // Helper to pack a 96-bit IV into the ctrLo/ctrHi format expected by the
@@ -64,7 +83,13 @@ int main() {
             std::vector<uint32_t> roundKeys((keyBits == 128) ? 44 : 60);
             if (keyBits == 128) expandKey128(key.data(), roundKeys.data());
             else expandKey256(key.data(), roundKeys.data());
+
+            printKeySchedule(roundKeys.data(), roundKeys.size(), "Host Key Schedule");
             init_roundKeys(roundKeys.data(), (int) roundKeys.size());
+
+            std::vector<uint32_t> deviceKeys(roundKeys.size());
+            CHECK_CUDA(cudaMemcpyFromSymbol(deviceKeys.data(), d_roundKeys, roundKeys.size()*sizeof(uint32_t)));
+            printKeySchedule(deviceKeys.data(), deviceKeys.size(), "Device Key Schedule");
 
             for (size_t dataBytes: testSizes) {
                 size_t nBlocks = (dataBytes + 15) / 16;
@@ -82,8 +107,12 @@ int main() {
                 if (mode == "gcm") {
                     CHECK_CUDA(cudaMalloc(&d_tag, 16));
                 }
+                printInputData(h_plain.data(), std::min<size_t>(64, h_plain.size()), "Host Input Data");
                 // Copy plaintext to device
                 CHECK_CUDA(cudaMemcpy(d_plain, h_plain.data(), dataBytes, cudaMemcpyHostToDevice));
+                std::vector<uint8_t> deviceInput(h_plain.size());
+                CHECK_CUDA(cudaMemcpy(deviceInput.data(), d_plain, dataBytes, cudaMemcpyDeviceToHost));
+                printInputData(deviceInput.data(), std::min<size_t>(64, deviceInput.size()), "Device Input Data");
                 // Configure launch (256 threads per block for large data)
                 dim3 block(256);
                 dim3 grid((unsigned) ((nBlocks + block.x - 1) / block.x));
