@@ -223,12 +223,13 @@ int main() {
                 }
 #endif
                 // Cleanup device buffers for this size
-                if (d_tag) cudaMemset(d_tag, 0, 16); // clear tag buffer for reuse
+                if (d_tag) {
+                    cudaMemset(d_tag, 0, 16); // clear tag buffer for reuse
+                    cudaFree(d_tag);
+                }
+                cudaFree(d_plain);
+                cudaFree(d_cipher);
             }
-            // Free device buffers for this mode/key
-            cudaFree(d_plain);
-            cudaFree(d_cipher);
-            if (d_tag) cudaFree(d_tag);
         }
     }
     return 0;
