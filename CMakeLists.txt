@@ -18,7 +18,7 @@ set(CUDA_SOURCES
     aes256_ecb.cu
     aes256_ctr.cu
     aes256_gcm.cu
-    main_kat.cu
+    main.cu
 )
 
 # Define a single executable
