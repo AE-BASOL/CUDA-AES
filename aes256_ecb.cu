@@ -1,122 +1,231 @@
-// aes256_ecb.cu – standalone CUDA ECB kernels for AES-256, compatible with main.cu
-// Build together with your existing sources (e.g., main.cu, aes_common.h)
-// Author: ChatGPT (OpenAI o4-mini)
+#include "aes_common.h"
 
-#include <cuda_runtime.h>
-#include <stdint.h>
-#include "aes_common.h"   // provides d_roundKeys (60 words) and tables
+extern __device__ __constant__ uint32_t d_roundKeys[60];
+extern __device__ __constant__ uint32_t d_T0[256], d_T1[256], d_T2[256], d_T3[256];
+extern __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[256];
+extern __device__ __constant__ uint8_t  d_sbox[256], d_inv_sbox[256];
 
-// Constant memory from aes_common.h
-extern __constant__ uint32_t d_roundKeys[];  // 60 words for AES-256
-extern __constant__ uint8_t d_sbox[];
-extern __constant__ uint8_t d_rsbox[];
+#define ENC_ROUND(o0,o1,o2,o3,s0,s1,s2,s3,rk) \
+    do { \
+        o0 = sh_T0[(s0) & 0xFF] ^ sh_T1[((s1)>>8)&0xFF] ^ \
+             sh_T2[((s2)>>16)&0xFF] ^ sh_T3[((s3)>>24)&0xFF] ^ (rk)[0]; \
+        o1 = sh_T0[(s1) & 0xFF] ^ sh_T1[((s2)>>8)&0xFF] ^ \
+             sh_T2[((s3)>>16)&0xFF] ^ sh_T3[((s0)>>24)&0xFF] ^ (rk)[1]; \
+        o2 = sh_T0[(s2) & 0xFF] ^ sh_T1[((s3)>>8)&0xFF] ^ \
+             sh_T2[((s0)>>16)&0xFF] ^ sh_T3[((s1)>>24)&0xFF] ^ (rk)[2]; \
+        o3 = sh_T0[(s3) & 0xFF] ^ sh_T1[((s0)>>8)&0xFF] ^ \
+             sh_T2[((s1)>>16)&0xFF] ^ sh_T3[((s2)>>24)&0xFF] ^ (rk)[3]; \
+    } while(0)
 
-// GF(2^8) multiplication helpers (same as in aes128_ecb.cu)
-__device__ __forceinline__ uint8_t xtime(uint8_t x) {
-    return (uint8_t)((x << 1) ^ ((x & 0x80u) ? 0x1bu : 0));
-}
-__device__ __forceinline__ uint8_t gmul2(uint8_t x) { return xtime(x); }
-__device__ __forceinline__ uint8_t gmul3(uint8_t x) { return (uint8_t)(xtime(x) ^ x); }
-__device__ __forceinline__ uint8_t gmul9(uint8_t x) { uint8_t x2=xtime(x), x4=xtime(x2), x8=xtime(x4); return (uint8_t)(x8 ^ x); }
-__device__ __forceinline__ uint8_t gmul11(uint8_t x){ uint8_t x2=xtime(x), x4=xtime(x2), x8=xtime(x4); return (uint8_t)(x8 ^ x2 ^ x); }
-__device__ __forceinline__ uint8_t gmul13(uint8_t x){ uint8_t x2=xtime(x), x4=xtime(x2), x8=xtime(x4); return (uint8_t)(x8 ^ x4 ^ x); }
-__device__ __forceinline__ uint8_t gmul14(uint8_t x){ uint8_t x2=xtime(x), x4=xtime(x2), x8=xtime(x4); return (uint8_t)(x8 ^ x4 ^ x2); }
+#define DEC_ROUND(o0,o1,o2,o3,s0,s1,s2,s3,rk) \
+    do { \
+        o0 = sh_U0[(s0) & 0xFF] ^ sh_U1[((s3)>>8)&0xFF] ^ \
+             sh_U2[((s2)>>16)&0xFF] ^ sh_U3[((s1)>>24)&0xFF] ^ (rk)[0]; \
+        o1 = sh_U0[(s1) & 0xFF] ^ sh_U1[((s0)>>8)&0xFF] ^ \
+             sh_U2[((s3)>>16)&0xFF] ^ sh_U3[((s2)>>24)&0xFF] ^ (rk)[1]; \
+        o2 = sh_U0[(s2) & 0xFF] ^ sh_U1[((s1)>>8)&0xFF] ^ \
+             sh_U2[((s0)>>16)&0xFF] ^ sh_U3[((s3)>>24)&0xFF] ^ (rk)[2]; \
+        o3 = sh_U0[(s3) & 0xFF] ^ sh_U1[((s2)>>8)&0xFF] ^ \
+             sh_U2[((s1)>>16)&0xFF] ^ sh_U3[((s0)>>24)&0xFF] ^ (rk)[3]; \
+    } while(0)
 
-// Round transformations
-__device__ __forceinline__ void addRoundKey(uint8_t st[16], const uint8_t *rk) {
-#pragma unroll
-    for (int i = 0; i < 16; ++i) st[i] ^= rk[i];
-}
-
-__device__ __forceinline__ void subBytesShiftRows(uint8_t st[16]) {
-    uint8_t tmp[16];
-    tmp[0]=d_sbox[st[0]]; tmp[1]=d_sbox[st[5]]; tmp[2]=d_sbox[st[10]]; tmp[3]=d_sbox[st[15]];
-    tmp[4]=d_sbox[st[4]]; tmp[5]=d_sbox[st[9]]; tmp[6]=d_sbox[st[14]]; tmp[7]=d_sbox[st[3]];
-    tmp[8]=d_sbox[st[8]]; tmp[9]=d_sbox[st[13]]; tmp[10]=d_sbox[st[2]]; tmp[11]=d_sbox[st[7]];
-    tmp[12]=d_sbox[st[12]]; tmp[13]=d_sbox[st[1]]; tmp[14]=d_sbox[st[6]]; tmp[15]=d_sbox[st[11]];
-#pragma unroll
-    for (int i = 0; i < 16; ++i) st[i] = tmp[i];
-}
-
-__device__ __forceinline__ void invShiftRowsSubBytes(uint8_t st[16]) {
-    uint8_t tmp[16];
-    tmp[0]=d_rsbox[st[0]]; tmp[1]=d_rsbox[st[13]]; tmp[2]=d_rsbox[st[10]]; tmp[3]=d_rsbox[st[7]];
-    tmp[4]=d_rsbox[st[4]]; tmp[5]=d_rsbox[st[1]]; tmp[6]=d_rsbox[st[14]]; tmp[7]=d_rsbox[st[11]];
-    tmp[8]=d_rsbox[st[8]]; tmp[9]=d_rsbox[st[5]]; tmp[10]=d_rsbox[st[2]]; tmp[11]=d_rsbox[st[15]];
-    tmp[12]=d_rsbox[st[12]]; tmp[13]=d_rsbox[st[9]]; tmp[14]=d_rsbox[st[6]]; tmp[15]=d_rsbox[st[3]];
-#pragma unroll
-    for (int i = 0; i < 16; ++i) st[i] = tmp[i];
-}
-
-__device__ __forceinline__ void mixColumns(uint8_t st[16]) {
-#pragma unroll
-    for (int c = 0; c < 4; ++c) {
-        uint8_t a0=st[c], a1=st[4+c], a2=st[8+c], a3=st[12+c];
-        st[c]    = gmul2(a0)^gmul3(a1)^a2^a3;
-        st[4+c]  = a0^gmul2(a1)^gmul3(a2)^a3;
-        st[8+c]  = a0^a1^gmul2(a2)^gmul3(a3);
-        st[12+c] = gmul3(a0)^a1^a2^gmul2(a3);
-    }
-}
-
-__device__ __forceinline__ void invMixColumns(uint8_t st[16]) {
-#pragma unroll
-    for (int c = 0; c < 4; ++c) {
-        uint8_t a0=st[c], a1=st[4+c], a2=st[8+c], a3=st[12+c];
-        st[c]    = gmul14(a0)^gmul11(a1)^gmul13(a2)^gmul9(a3);
-        st[4+c]  = gmul9(a0)^gmul14(a1)^gmul11(a2)^gmul13(a3);
-        st[8+c]  = gmul13(a0)^gmul9(a1)^gmul14(a2)^gmul11(a3);
-        st[12+c] = gmul11(a0)^gmul13(a1)^gmul9(a2)^gmul14(a3);
-    }
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// AES-256 ECB encryption kernel
-__global__ void aes256_ecb_encrypt(const uint8_t *__restrict__ in,
-                                   uint8_t *__restrict__ out,
-                                   size_t nBlocks) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void aes256_ecb_encrypt(const uint8_t* in, uint8_t* out, size_t nBlocks) {
+    const size_t idx    = blockIdx.x * blockDim.x + threadIdx.x;
+    const size_t stride = blockDim.x * gridDim.x;
     if (idx >= nBlocks) return;
-    uint8_t state[16];
-#pragma unroll
-    for (int i = 0; i < 16; ++i) state[i] = in[idx*16 + i];
-    const uint8_t *rk = reinterpret_cast<const uint8_t*>(d_roundKeys);
-    // initial round
-    addRoundKey(state, rk);
-    // rounds 1-13
-    for (int round = 1; round <= 13; ++round) {
-        subBytesShiftRows(state);
-        mixColumns(state);
-        addRoundKey(state, rk + round*16);
+    __shared__ uint32_t sh_T0[256], sh_T1[256], sh_T2[256], sh_T3[256];
+    __shared__ uint8_t  sh_sbox[256];
+    if (threadIdx.x < 256) {
+        sh_T0[threadIdx.x] = d_T0[threadIdx.x];
+        sh_T1[threadIdx.x] = d_T1[threadIdx.x];
+        sh_T2[threadIdx.x] = d_T2[threadIdx.x];
+        sh_T3[threadIdx.x] = d_T3[threadIdx.x];
+        sh_sbox[threadIdx.x] = d_sbox[threadIdx.x];
     }
-    // final round
-    subBytesShiftRows(state);
-    addRoundKey(state, rk + 14*16);
-#pragma unroll
-    for (int i = 0; i < 16; ++i) out[idx*16 + i] = state[i];
+    __syncthreads();
+    const uint32_t* rk = d_roundKeys;
+    size_t i = idx;
+    if (i < nBlocks) {
+        uint4 block = reinterpret_cast<const uint4*>(in)[i];
+        uint32_t s0 = block.x ^ rk[0];
+        uint32_t s1 = block.y ^ rk[1];
+        uint32_t s2 = block.z ^ rk[2];
+        uint32_t s3 = block.w ^ rk[3];
+        uint32_t t0,t1,t2,t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+4);  s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+8);  s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+12); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+16); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+20); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+24); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+28); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+32); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+36); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+40); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+44); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+48); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+52); s0=t0; s1=t1; s2=t2; s3=t3;
+        const uint8_t* sb = sh_sbox;
+        uint32_t k0 = ((uint32_t)sb[ s0        & 0xFF]) |
+                      ((uint32_t)sb[ s1        & 0xFF] << 8) |
+                      ((uint32_t)sb[ s2        & 0xFF] << 16) |
+                      ((uint32_t)sb[ s3        & 0xFF] << 24);
+        uint32_t k1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
+                      ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
+                      ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
+        uint32_t k2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
+                      ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
+                      ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
+        uint32_t k3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
+                      ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
+                      ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
+                      ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
+        k0 ^= rk[56]; k1 ^= rk[57]; k2 ^= rk[58]; k3 ^= rk[59];
+        reinterpret_cast<uint4*>(out)[i] = make_uint4(k0,k1,k2,k3);
+    }
+    i += stride;
+    if (i < nBlocks) {
+        uint4 block = reinterpret_cast<const uint4*>(in)[i];
+        uint32_t s0 = block.x ^ rk[0];
+        uint32_t s1 = block.y ^ rk[1];
+        uint32_t s2 = block.z ^ rk[2];
+        uint32_t s3 = block.w ^ rk[3];
+        uint32_t t0,t1,t2,t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+4);  s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+8);  s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+12); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+16); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+20); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+24); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+28); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+32); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+36); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+40); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+44); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+48); s0=t0; s1=t1; s2=t2; s3=t3;
+        ENC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+52); s0=t0; s1=t1; s2=t2; s3=t3;
+        const uint8_t* sb = sh_sbox;
+        uint32_t k0 = ((uint32_t)sb[ s0        & 0xFF]) |
+                      ((uint32_t)sb[ s1        & 0xFF] << 8) |
+                      ((uint32_t)sb[ s2        & 0xFF] << 16) |
+                      ((uint32_t)sb[ s3        & 0xFF] << 24);
+        uint32_t k1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
+                      ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
+                      ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
+        uint32_t k2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
+                      ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
+                      ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
+        uint32_t k3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
+                      ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
+                      ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
+                      ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
+        k0 ^= rk[56]; k1 ^= rk[57]; k2 ^= rk[58]; k3 ^= rk[59];
+        reinterpret_cast<uint4*>(out)[i] = make_uint4(k0,k1,k2,k3);
+    }
 }
 
-// AES-256 ECB decryption kernel
-__global__ void aes256_ecb_decrypt(const uint8_t *__restrict__ in,
-                                   uint8_t *__restrict__ out,
-                                   size_t nBlocks) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void aes256_ecb_decrypt(const uint8_t* in, uint8_t* out, size_t nBlocks) {
+    const size_t idx    = blockIdx.x * blockDim.x + threadIdx.x;
+    const size_t stride = blockDim.x * gridDim.x;
     if (idx >= nBlocks) return;
-    uint8_t state[16];
-#pragma unroll
-    for (int i = 0; i < 16; ++i) state[i] = in[idx*16 + i];
-    const uint8_t *rk = reinterpret_cast<const uint8_t*>(d_roundKeys);
-    // initial inverse round
-    addRoundKey(state, rk + 14*16);
-    // rounds 13-1
-    for (int round = 13; round >= 1; --round) {
-        invShiftRowsSubBytes(state);
-        addRoundKey(state, rk + round*16);
-        invMixColumns(state);
+    __shared__ uint32_t sh_U0[256], sh_U1[256], sh_U2[256], sh_U3[256];
+    __shared__ uint8_t  sh_inv[256];
+    if (threadIdx.x < 256) {
+        sh_U0[threadIdx.x] = d_U0[threadIdx.x];
+        sh_U1[threadIdx.x] = d_U1[threadIdx.x];
+        sh_U2[threadIdx.x] = d_U2[threadIdx.x];
+        sh_U3[threadIdx.x] = d_U3[threadIdx.x];
+        sh_inv[threadIdx.x] = d_inv_sbox[threadIdx.x];
     }
-    // final inverse round
-    invShiftRowsSubBytes(state);
-    addRoundKey(state, rk);
-#pragma unroll
-    for (int i = 0; i < 16; ++i) out[idx*16 + i] = state[i];
+    __syncthreads();
+    const uint32_t* rk = d_roundKeys;
+    size_t i = idx;
+    if (i < nBlocks) {
+        uint4 block = reinterpret_cast<const uint4*>(in)[i];
+        uint32_t s0 = block.x ^ rk[56];
+        uint32_t s1 = block.y ^ rk[57];
+        uint32_t s2 = block.z ^ rk[58];
+        uint32_t s3 = block.w ^ rk[59];
+        uint32_t t0,t1,t2,t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+52); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+48); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+44); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+40); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+36); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+32); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+28); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+24); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+20); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+16); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+12); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+8);  s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+4);  s0=t0; s1=t1; s2=t2; s3=t3;
+        const uint8_t* isb = sh_inv;
+        uint32_t k0 = ((uint32_t)isb[ s0        & 0xFF]) |
+                      ((uint32_t)isb[(s3 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s2 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s1 >> 24) & 0xFF] << 24);
+        uint32_t k1 = ((uint32_t)isb[ s1        & 0xFF]) |
+                      ((uint32_t)isb[(s0 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s3 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s2 >> 24) & 0xFF] << 24);
+        uint32_t k2 = ((uint32_t)isb[ s2        & 0xFF]) |
+                      ((uint32_t)isb[(s1 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s0 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s3 >> 24) & 0xFF] << 24);
+        uint32_t k3 = ((uint32_t)isb[ s3        & 0xFF]) |
+                      ((uint32_t)isb[(s2 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s1 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s0 >> 24) & 0xFF] << 24);
+        k0 ^= rk[0]; k1 ^= rk[1]; k2 ^= rk[2]; k3 ^= rk[3];
+        reinterpret_cast<uint4*>(out)[i] = make_uint4(k0,k1,k2,k3);
+    }
+    i += stride;
+    if (i < nBlocks) {
+        uint4 block = reinterpret_cast<const uint4*>(in)[i];
+        uint32_t s0 = block.x ^ rk[56];
+        uint32_t s1 = block.y ^ rk[57];
+        uint32_t s2 = block.z ^ rk[58];
+        uint32_t s3 = block.w ^ rk[59];
+        uint32_t t0,t1,t2,t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+52); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+48); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+44); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+40); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+36); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+32); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+28); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+24); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+20); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+16); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+12); s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+8);  s0=t0; s1=t1; s2=t2; s3=t3;
+        DEC_ROUND(t0,t1,t2,t3, s0,s1,s2,s3, rk+4);  s0=t0; s1=t1; s2=t2; s3=t3;
+        const uint8_t* isb = sh_inv;
+        uint32_t k0 = ((uint32_t)isb[ s0        & 0xFF]) |
+                      ((uint32_t)isb[(s3 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s2 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s1 >> 24) & 0xFF] << 24);
+        uint32_t k1 = ((uint32_t)isb[ s1        & 0xFF]) |
+                      ((uint32_t)isb[(s0 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s3 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s2 >> 24) & 0xFF] << 24);
+        uint32_t k2 = ((uint32_t)isb[ s2        & 0xFF]) |
+                      ((uint32_t)isb[(s1 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s0 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s3 >> 24) & 0xFF] << 24);
+        uint32_t k3 = ((uint32_t)isb[ s3        & 0xFF]) |
+                      ((uint32_t)isb[(s2 >>  8) & 0xFF] << 8) |
+                      ((uint32_t)isb[(s1 >> 16) & 0xFF] << 16) |
+                      ((uint32_t)isb[(s0 >> 24) & 0xFF] << 24);
+        k0 ^= rk[0]; k1 ^= rk[1]; k2 ^= rk[2]; k3 ^= rk[3];
+        reinterpret_cast<uint4*>(out)[i] = make_uint4(k0,k1,k2,k3);
+    }
 }
+
+#undef ENC_ROUND
+#undef DEC_ROUND
