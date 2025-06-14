@@ -6,9 +6,7 @@
 #include <stdint.h>
 #include "aes_common.h"
 
-extern __constant__ uint32_t d_roundKeys[];     // 60 words
-extern __constant__ uint8_t  d_sbox[];
-extern __constant__ uint8_t  d_inv_sbox[];
+// Device constant memory declarations come from aes_common.h
 
 union Block {
     uint32_t w[4];
