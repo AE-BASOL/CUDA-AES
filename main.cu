@@ -72,7 +72,11 @@ int main() {
             printKeySchedule(roundKeys.data(), roundKeys.size(), "Host Key Schedule");
             init_roundKeys(roundKeys.data(), (int)roundKeys.size());
             std::vector<uint32_t> deviceKeys(roundKeys.size());
+            // NVTX Start: Memcpy Device→Host
+            NVTX_PUSH("Memcpy Device\xE2\x86\x92Host");
             CHECK_CUDA(cudaMemcpyFromSymbol(deviceKeys.data(), d_roundKeys, roundKeys.size()*sizeof(uint32_t)));
+            NVTX_POP();
+            // NVTX End: Memcpy Device→Host
             printKeySchedule(deviceKeys.data(), deviceKeys.size(), "Device Key Schedule");
 
             for (size_t dataBytes : testSizes) {
@@ -85,13 +89,35 @@ int main() {
                 uint8_t tagCPU[16], tagGPU[16];
 
                 uint8_t *d_plain=nullptr,*d_cipher=nullptr,*d_tag=nullptr;
+                // NVTX Start: Malloc
+                NVTX_PUSH("Malloc");
                 CHECK_CUDA(cudaMalloc(&d_plain, dataBytes));
+                NVTX_POP();
+                // NVTX End: Malloc
+                // NVTX Start: Malloc
+                NVTX_PUSH("Malloc");
                 CHECK_CUDA(cudaMalloc(&d_cipher, dataBytes));
-                if (mode=="gcm") CHECK_CUDA(cudaMalloc(&d_tag,16));
+                NVTX_POP();
+                // NVTX End: Malloc
+                if (mode=="gcm") {
+                    // NVTX Start: Malloc
+                    NVTX_PUSH("Malloc");
+                    CHECK_CUDA(cudaMalloc(&d_tag,16));
+                    NVTX_POP();
+                    // NVTX End: Malloc
+                }
                 printInputData(h_plain.data(), std::min<size_t>(64, h_plain.size()), "Host Input Data");
+                // NVTX Start: Memcpy Host→Device
+                NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                 CHECK_CUDA(cudaMemcpy(d_plain, h_plain.data(), dataBytes, cudaMemcpyHostToDevice));
+                NVTX_POP();
+                // NVTX End: Memcpy Host→Device
                 std::vector<uint8_t> deviceInput(h_plain.size());
+                // NVTX Start: Memcpy Device→Host
+                NVTX_PUSH("Memcpy Device\xE2\x86\x92Host");
                 CHECK_CUDA(cudaMemcpy(deviceInput.data(), d_plain, dataBytes, cudaMemcpyDeviceToHost));
+                NVTX_POP();
+                // NVTX End: Memcpy Device→Host
                 printInputData(deviceInput.data(), std::min<size_t>(64, deviceInput.size()), "Device Input Data");
 
                 dim3 block(256);
@@ -99,25 +125,77 @@ int main() {
                 cudaEvent_t start,stop; cudaEventCreate(&start); cudaEventCreate(&stop);
                 cudaEventRecord(start);
                 if (mode=="ecb" && keyBits==128) {
+                    // NVTX Start: ECB-128 Encrypt
+                    NVTX_PUSH("ECB-128 Encrypt");
                     aes128_ecb_encrypt<<<grid,block>>>(d_plain,d_cipher,nBlocks);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: ECB-128 Encrypt
                 } else if (mode=="ecb" && keyBits==256) {
+                    // NVTX Start: ECB-256 Encrypt
+                    NVTX_PUSH("ECB-256 Encrypt");
                     aes256_ecb_encrypt<<<grid,block>>>(d_plain,d_cipher,nBlocks);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: ECB-256 Encrypt
                 } else if (mode=="ctr" && keyBits==128) {
                     uint64_t ctrLo=0, ctrHi=0; packCtr(iv.data(),ctrLo,ctrHi);
+                    // NVTX Start: CTR-128 Encrypt
+                    NVTX_PUSH("CTR-128 Encrypt");
                     aes128_ctr_encrypt<<<grid,block>>>(d_plain,d_cipher,nBlocks,ctrLo,ctrHi);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: CTR-128 Encrypt
                 } else if (mode=="ctr" && keyBits==256) {
                     uint64_t ctrLo=0, ctrHi=0; packCtr(iv.data(),ctrLo,ctrHi);
+                    // NVTX Start: CTR-256 Encrypt
+                    NVTX_PUSH("CTR-256 Encrypt");
                     aes256_ctr_encrypt<<<grid,block>>>(d_plain,d_cipher,nBlocks,ctrLo,ctrHi);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: CTR-256 Encrypt
                 } else if (mode=="gcm" && keyBits==128) {
                     uint8_t *d_iv=nullptr; CHECK_CUDA(cudaMalloc(&d_iv,12));
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_iv, iv.data(),12,cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
+                    // NVTX Start: GCM-128 Encrypt
+                    NVTX_PUSH("GCM-128 Encrypt");
                     aes128_gcm_encrypt<<<1,256>>>(d_plain,d_cipher,nBlocks,d_iv,d_tag);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: GCM-128 Encrypt
+                    // NVTX Start: Free
+                    NVTX_PUSH("Free");
                     CHECK_CUDA(cudaFree(d_iv));
+                    NVTX_POP();
+                    // NVTX End: Free
                 } else if (mode=="gcm" && keyBits==256) {
                     uint8_t *d_iv=nullptr; CHECK_CUDA(cudaMalloc(&d_iv,12));
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_iv, iv.data(),12,cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
+                    // NVTX Start: GCM-256 Encrypt
+                    NVTX_PUSH("GCM-256 Encrypt");
                     aes256_gcm_encrypt<<<1,256>>>(d_plain,d_cipher,nBlocks,d_iv,d_tag);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: GCM-256 Encrypt
+                    // NVTX Start: Free
+                    NVTX_PUSH("Free");
                     CHECK_CUDA(cudaFree(d_iv));
+                    NVTX_POP();
+                    // NVTX End: Free
                 }
                 cudaEventRecord(stop);
                 CHECK_CUDA(cudaGetLastError());
@@ -128,38 +206,128 @@ int main() {
                           << (double)dataBytes/(1<<20) << " MiB in " << ms
                           << " ms -> " << thr << " GiB/s" << std::endl;
 
+                // NVTX Start: Memcpy Device→Host
+                NVTX_PUSH("Memcpy Device\xE2\x86\x92Host");
                 CHECK_CUDA(cudaMemcpy(h_cipher.data(), d_cipher, dataBytes, cudaMemcpyDeviceToHost));
-                if (mode=="gcm") CHECK_CUDA(cudaMemcpy(tagGPU, d_tag, 16, cudaMemcpyDeviceToHost));
+                NVTX_POP();
+                // NVTX End: Memcpy Device→Host
+                if (mode=="gcm") {
+                    // NVTX Start: Memcpy Device→Host
+                    NVTX_PUSH("Memcpy Device\xE2\x86\x92Host");
+                    CHECK_CUDA(cudaMemcpy(tagGPU, d_tag, 16, cudaMemcpyDeviceToHost));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Device→Host
+                }
 
                 if (mode=="ecb" && keyBits==128) {
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
+                    // NVTX Start: ECB-128 Decrypt
+                    NVTX_PUSH("ECB-128 Decrypt");
                     aes128_ecb_decrypt<<<grid,block>>>(d_cipher,d_plain,nBlocks);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: ECB-128 Decrypt
                 } else if (mode=="ecb" && keyBits==256) {
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
+                    // NVTX Start: ECB-256 Decrypt
+                    NVTX_PUSH("ECB-256 Decrypt");
                     aes256_ecb_decrypt<<<grid,block>>>(d_cipher,d_plain,nBlocks);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: ECB-256 Decrypt
                 } else if (mode=="ctr" && keyBits==128) {
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
                     uint64_t ctrLo=0, ctrHi=0; packCtr(iv.data(),ctrLo,ctrHi);
+                    // NVTX Start: CTR-128 Decrypt
+                    NVTX_PUSH("CTR-128 Decrypt");
                     aes128_ctr_decrypt<<<grid,block>>>(d_cipher,d_plain,nBlocks,ctrLo,ctrHi);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: CTR-128 Decrypt
                 } else if (mode=="ctr" && keyBits==256) {
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
                     uint64_t ctrLo=0, ctrHi=0; packCtr(iv.data(),ctrLo,ctrHi);
+                    // NVTX Start: CTR-256 Decrypt
+                    NVTX_PUSH("CTR-256 Decrypt");
                     aes256_ctr_decrypt<<<grid,block>>>(d_cipher,d_plain,nBlocks,ctrLo,ctrHi);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: CTR-256 Decrypt
                 } else if (mode=="gcm" && keyBits==128) {
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
                     uint8_t *d_iv2=nullptr; CHECK_CUDA(cudaMalloc(&d_iv2,12));
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_iv2, iv.data(),12,cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
+                    // NVTX Start: GCM-128 Decrypt
+                    NVTX_PUSH("GCM-128 Decrypt");
                     aes128_gcm_decrypt<<<1,256>>>(d_cipher,d_plain,nBlocks,d_iv2,d_tag,d_tag);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: GCM-128 Decrypt
+                    // NVTX Start: Free
+                    NVTX_PUSH("Free");
                     CHECK_CUDA(cudaFree(d_iv2));
+                    NVTX_POP();
+                    // NVTX End: Free
                 } else if (mode=="gcm" && keyBits==256) {
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_cipher, h_cipher.data(), dataBytes, cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
                     uint8_t *d_iv2=nullptr; CHECK_CUDA(cudaMalloc(&d_iv2,12));
+                    // NVTX Start: Memcpy Host→Device
+                    NVTX_PUSH("Memcpy Host\xE2\x86\x92Device");
                     CHECK_CUDA(cudaMemcpy(d_iv2, iv.data(),12,cudaMemcpyHostToDevice));
+                    NVTX_POP();
+                    // NVTX End: Memcpy Host→Device
+                    // NVTX Start: GCM-256 Decrypt
+                    NVTX_PUSH("GCM-256 Decrypt");
                     aes256_gcm_decrypt<<<1,256>>>(d_cipher,d_plain,nBlocks,d_iv2,d_tag,d_tag);
+                    CHECK_CUDA(cudaGetLastError());
+                    CHECK_CUDA(cudaDeviceSynchronize());
+                    NVTX_POP();
+                    // NVTX End: GCM-256 Decrypt
+                    // NVTX Start: Free
+                    NVTX_PUSH("Free");
                     CHECK_CUDA(cudaFree(d_iv2));
+                    NVTX_POP();
+                    // NVTX End: Free
                 }
                 CHECK_CUDA(cudaDeviceSynchronize());
+                // NVTX Start: Memcpy Device→Host
+                NVTX_PUSH("Memcpy Device\xE2\x86\x92Host");
                 CHECK_CUDA(cudaMemcpy(h_recovered.data(), d_plain, dataBytes, cudaMemcpyDeviceToHost));
+                NVTX_POP();
+                // NVTX End: Memcpy Device→Host
                 bool match = (h_recovered == h_plain);
                 std::cout << "    Round-trip " << mode << "-" << keyBits << " "
                           << (double)dataBytes/(1<<20) << " MiB "
@@ -209,7 +377,11 @@ int main() {
                 }
 #endif
                 if(d_tag) cudaMemset(d_tag,0,16);
+                // NVTX Start: Free
+                NVTX_PUSH("Free");
                 cudaFree(d_plain); cudaFree(d_cipher); if(d_tag) cudaFree(d_tag);
+                NVTX_POP();
+                // NVTX End: Free
             }
         }
     }
