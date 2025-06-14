@@ -13,18 +13,24 @@ extern __device__ __constant__ uint8_t  d_inv_sbox[256];
 extern __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[256];
 
 
-/* ------------ single round (little-endian tables) ------------- */
+/* helpers */
+#define B0(x) (((x) >> 24) & 0xFF)
+#define B1(x) (((x) >> 16) & 0xFF)
+#define B2(x) (((x) >>  8) & 0xFF)
+#define B3(x) ((x) & 0xFF)
+
+/* corrected T-table round (matches OpenSSL te0-te3) */
 #define AES_ROUND(o0,o1,o2,o3,s0,s1,s2,s3,rk)                    \
-{                                                                \
-    (o0)=sh_T0[(s0      ) &0xFF] ^ sh_T1[((s1>>  8)&0xFF)] ^     \
-         sh_T2[((s2>>16)&0xFF)] ^ sh_T3[((s3>>24)&0xFF)] ^ (rk)[0];\
-    (o1)=sh_T0[(s1      ) &0xFF] ^ sh_T1[((s2>>  8)&0xFF)] ^     \
-         sh_T2[((s3>>16)&0xFF)] ^ sh_T3[((s0>>24)&0xFF)] ^ (rk)[1];\
-    (o2)=sh_T0[(s2      ) &0xFF] ^ sh_T1[((s3>>  8)&0xFF)] ^     \
-         sh_T2[((s0>>16)&0xFF)] ^ sh_T3[((s1>>24)&0xFF)] ^ (rk)[2];\
-    (o3)=sh_T0[(s3      ) &0xFF] ^ sh_T1[((s0>>  8)&0xFF)] ^     \
-         sh_T2[((s1>>16)&0xFF)] ^ sh_T3[((s2>>24)&0xFF)] ^ (rk)[3];\
-}
+do {                                                            \
+    (o0)=sh_T0[B0(s0)] ^ sh_T1[B1(s1)] ^                        \
+         sh_T2[B2(s2)] ^ sh_T3[B3(s3)] ^ (rk)[0];               \
+    (o1)=sh_T0[B0(s1)] ^ sh_T1[B1(s2)] ^                        \
+         sh_T2[B2(s3)] ^ sh_T3[B3(s0)] ^ (rk)[1];               \
+    (o2)=sh_T0[B0(s2)] ^ sh_T1[B1(s3)] ^                        \
+         sh_T2[B2(s0)] ^ sh_T3[B3(s1)] ^ (rk)[2];               \
+    (o3)=sh_T0[B0(s3)] ^ sh_T1[B1(s0)] ^                        \
+         sh_T2[B2(s1)] ^ sh_T3[B3(s2)] ^ (rk)[3];               \
+} while (0)
 
 /* ====================== kernel ============================== */
 __global__ void aes128_ecb_encrypt(const uint8_t *in,
@@ -68,22 +74,22 @@ __global__ void aes128_ecb_encrypt(const uint8_t *in,
 
     /* final round (SubBytes + ShiftRows) */
     const uint8_t *sb = sh_sbox;
-    uint32_t r0 = ((uint32_t)sb[ s0        & 0xFF]) |
-                  ((uint32_t)sb[ s1        & 0xFF] << 8) |
-                  ((uint32_t)sb[ s2        & 0xFF] << 16) |
-                  ((uint32_t)sb[ s3        & 0xFF] << 24);
-    uint32_t r1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
-                  ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
-                  ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
-    uint32_t r2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
-                  ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
-                  ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
-    uint32_t r3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
-                  ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
-                  ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
-                  ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
+    uint32_t r0 = ((uint32_t)sb[B0(s0)] << 24) |
+                  ((uint32_t)sb[B1(s1)] << 16) |
+                  ((uint32_t)sb[B2(s2)] <<  8) |
+                  ((uint32_t)sb[B3(s3)]);
+    uint32_t r1 = ((uint32_t)sb[B0(s1)] << 24) |
+                  ((uint32_t)sb[B1(s2)] << 16) |
+                  ((uint32_t)sb[B2(s3)] <<  8) |
+                  ((uint32_t)sb[B3(s0)]);
+    uint32_t r2 = ((uint32_t)sb[B0(s2)] << 24) |
+                  ((uint32_t)sb[B1(s3)] << 16) |
+                  ((uint32_t)sb[B2(s0)] <<  8) |
+                  ((uint32_t)sb[B3(s1)]);
+    uint32_t r3 = ((uint32_t)sb[B0(s3)] << 24) |
+                  ((uint32_t)sb[B1(s0)] << 16) |
+                  ((uint32_t)sb[B2(s1)] <<  8) |
+                  ((uint32_t)sb[B3(s2)]);
 
     /* final AddRoundKey */
     r0 ^= rk[40];
@@ -129,24 +135,22 @@ __global__ void aes128_ecb_decrypt(const uint8_t *in,
 
     // Final round: InvShiftRows + InvSubBytes, then AddRoundKey
     const uint8_t *isbox = d_inv_sbox;
-    // Apply InvShiftRows and InvSubBytes in one step, matching little-endian
-    // state layout. Rows are rotated right by 0,1,2,3 bytes respectively.
-    uint32_t r0 = ((uint32_t)isbox[ s0        & 0xFF]) |
-                  ((uint32_t)isbox[(s3 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s2 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s1 >> 24) & 0xFF] << 24);
-    uint32_t r1 = ((uint32_t)isbox[ s1        & 0xFF]) |
-                  ((uint32_t)isbox[(s0 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s3 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s2 >> 24) & 0xFF] << 24);
-    uint32_t r2 = ((uint32_t)isbox[ s2        & 0xFF]) |
-                  ((uint32_t)isbox[(s1 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s0 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s3 >> 24) & 0xFF] << 24);
-    uint32_t r3 = ((uint32_t)isbox[ s3        & 0xFF]) |
-                  ((uint32_t)isbox[(s2 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s1 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s0 >> 24) & 0xFF] << 24);
+    uint32_t r0 = ((uint32_t)isbox[B0(s0)] << 24) |
+                  ((uint32_t)isbox[B1(s1)] << 16) |
+                  ((uint32_t)isbox[B2(s2)] <<  8) |
+                  ((uint32_t)isbox[B3(s3)]);
+    uint32_t r1 = ((uint32_t)isbox[B0(s1)] << 24) |
+                  ((uint32_t)isbox[B1(s2)] << 16) |
+                  ((uint32_t)isbox[B2(s3)] <<  8) |
+                  ((uint32_t)isbox[B3(s0)]);
+    uint32_t r2 = ((uint32_t)isbox[B0(s2)] << 24) |
+                  ((uint32_t)isbox[B1(s3)] << 16) |
+                  ((uint32_t)isbox[B2(s0)] <<  8) |
+                  ((uint32_t)isbox[B3(s1)]);
+    uint32_t r3 = ((uint32_t)isbox[B0(s3)] << 24) |
+                  ((uint32_t)isbox[B1(s0)] << 16) |
+                  ((uint32_t)isbox[B2(s1)] <<  8) |
+                  ((uint32_t)isbox[B3(s2)]);
 
     r0 ^= rk[0];
     r1 ^= rk[1];

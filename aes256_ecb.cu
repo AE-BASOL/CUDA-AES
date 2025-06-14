@@ -8,27 +8,35 @@ extern __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[25
 extern __device__ __constant__ uint8_t  d_inv_sbox[256];
 
 // AES-256 has 14 rounds (Nr=14, key schedule 60 words).
-#define AES_ENC_ROUND(o0,o1,o2,o3, s0,s1,s2,s3, rk) {                 \
-    o0 = sh_T0[(s0      ) & 0xFF] ^ sh_T1[(s1 >>  8) & 0xFF] ^        \
-         sh_T2[(s2 >> 16) & 0xFF] ^ sh_T3[(s3 >> 24) & 0xFF] ^ (rk)[0];\
-    o1 = sh_T0[(s1      ) & 0xFF] ^ sh_T1[(s2 >>  8) & 0xFF] ^        \
-         sh_T2[(s3 >> 16) & 0xFF] ^ sh_T3[(s0 >> 24) & 0xFF] ^ (rk)[1];\
-    o2 = sh_T0[(s2      ) & 0xFF] ^ sh_T1[(s3 >>  8) & 0xFF] ^        \
-         sh_T2[(s0 >> 16) & 0xFF] ^ sh_T3[(s1 >> 24) & 0xFF] ^ (rk)[2];\
-    o3 = sh_T0[(s3      ) & 0xFF] ^ sh_T1[(s0 >>  8) & 0xFF] ^        \
-         sh_T2[(s1 >> 16) & 0xFF] ^ sh_T3[(s2 >> 24) & 0xFF] ^ (rk)[3];\
-}
+/* helpers */
+#define B0(x) (((x) >> 24) & 0xFF)
+#define B1(x) (((x) >> 16) & 0xFF)
+#define B2(x) (((x) >>  8) & 0xFF)
+#define B3(x) ((x) & 0xFF)
 
-#define AES_DEC_ROUND(o0,o1,o2,o3, s0,s1,s2,s3, rk) {                 \
-    o0 = d_U0[(s0      ) & 0xFF] ^ d_U1[(s3 >>  8) & 0xFF] ^          \
-         d_U2[(s2 >> 16) & 0xFF] ^ d_U3[(s1 >> 24) & 0xFF] ^ (rk)[0]; \
-    o1 = d_U0[(s1      ) & 0xFF] ^ d_U1[(s0 >>  8) & 0xFF] ^          \
-         d_U2[(s3 >> 16) & 0xFF] ^ d_U3[(s2 >> 24) & 0xFF] ^ (rk)[1]; \
-    o2 = d_U0[(s2      ) & 0xFF] ^ d_U1[(s1 >>  8) & 0xFF] ^          \
-         d_U2[(s0 >> 16) & 0xFF] ^ d_U3[(s3 >> 24) & 0xFF] ^ (rk)[2]; \
-    o3 = d_U0[(s3      ) & 0xFF] ^ d_U1[(s2 >>  8) & 0xFF] ^          \
-         d_U2[(s1 >> 16) & 0xFF] ^ d_U3[(s0 >> 24) & 0xFF] ^ (rk)[3]; \
-}
+#define AES_ENC_ROUND(o0,o1,o2,o3, s0,s1,s2,s3, rk)                \
+do {                                                               \
+    o0 = sh_T0[B0(s0)] ^ sh_T1[B1(s1)] ^                          \
+         sh_T2[B2(s2)] ^ sh_T3[B3(s3)] ^ (rk)[0];                 \
+    o1 = sh_T0[B0(s1)] ^ sh_T1[B1(s2)] ^                          \
+         sh_T2[B2(s3)] ^ sh_T3[B3(s0)] ^ (rk)[1];                 \
+    o2 = sh_T0[B0(s2)] ^ sh_T1[B1(s3)] ^                          \
+         sh_T2[B2(s0)] ^ sh_T3[B3(s1)] ^ (rk)[2];                 \
+    o3 = sh_T0[B0(s3)] ^ sh_T1[B1(s0)] ^                          \
+         sh_T2[B2(s1)] ^ sh_T3[B3(s2)] ^ (rk)[3];                 \
+} while (0)
+
+#define AES_DEC_ROUND(o0,o1,o2,o3, s0,s1,s2,s3, rk)                \
+do {                                                               \
+    o0 = d_U0[B0(s0)] ^ d_U1[B1(s3)] ^                            \
+         d_U2[B2(s2)] ^ d_U3[B3(s1)] ^ (rk)[0];                   \
+    o1 = d_U0[B0(s1)] ^ d_U1[B1(s0)] ^                            \
+         d_U2[B2(s3)] ^ d_U3[B3(s2)] ^ (rk)[1];                   \
+    o2 = d_U0[B0(s2)] ^ d_U1[B1(s1)] ^                            \
+         d_U2[B2(s0)] ^ d_U3[B3(s3)] ^ (rk)[2];                   \
+    o3 = d_U0[B0(s3)] ^ d_U1[B1(s2)] ^                            \
+         d_U2[B2(s1)] ^ d_U3[B3(s0)] ^ (rk)[3];                   \
+} while (0)
 
 __global__ void aes256_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -66,22 +74,22 @@ __global__ void aes256_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t nBloc
 
     // Final round (round 14: SubBytes + ShiftRows + AddRoundKey)
     const uint8_t *sb = sh_sbox;
-    uint32_t r0 = ((uint32_t)sb[ s0        & 0xFF]) |
-                  ((uint32_t)sb[ s1        & 0xFF] << 8) |
-                  ((uint32_t)sb[ s2        & 0xFF] << 16) |
-                  ((uint32_t)sb[ s3        & 0xFF] << 24);
-    uint32_t r1 = ((uint32_t)sb[(s1 >>  8) & 0xFF]) |
-                  ((uint32_t)sb[(s2 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)sb[(s3 >>  8) & 0xFF] << 16) |
-                  ((uint32_t)sb[(s0 >>  8) & 0xFF] << 24);
-    uint32_t r2 = ((uint32_t)sb[(s2 >> 16) & 0xFF]) |
-                  ((uint32_t)sb[(s3 >> 16) & 0xFF] << 8) |
-                  ((uint32_t)sb[(s0 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)sb[(s1 >> 16) & 0xFF] << 24);
-    uint32_t r3 = ((uint32_t)sb[(s3 >> 24) & 0xFF]) |
-                  ((uint32_t)sb[(s0 >> 24) & 0xFF] << 8) |
-                  ((uint32_t)sb[(s1 >> 24) & 0xFF] << 16) |
-                  ((uint32_t)sb[(s2 >> 24) & 0xFF] << 24);
+    uint32_t r0 = ((uint32_t)sb[B0(s0)] << 24) |
+                  ((uint32_t)sb[B1(s1)] << 16) |
+                  ((uint32_t)sb[B2(s2)] <<  8) |
+                  ((uint32_t)sb[B3(s3)]);
+    uint32_t r1 = ((uint32_t)sb[B0(s1)] << 24) |
+                  ((uint32_t)sb[B1(s2)] << 16) |
+                  ((uint32_t)sb[B2(s3)] <<  8) |
+                  ((uint32_t)sb[B3(s0)]);
+    uint32_t r2 = ((uint32_t)sb[B0(s2)] << 24) |
+                  ((uint32_t)sb[B1(s3)] << 16) |
+                  ((uint32_t)sb[B2(s0)] <<  8) |
+                  ((uint32_t)sb[B3(s1)]);
+    uint32_t r3 = ((uint32_t)sb[B0(s3)] << 24) |
+                  ((uint32_t)sb[B1(s0)] << 16) |
+                  ((uint32_t)sb[B2(s1)] <<  8) |
+                  ((uint32_t)sb[B3(s2)]);
 
     r0 ^= rk[56];  // Last round key for AES-256 starts at index 56
     r1 ^= rk[57];
@@ -115,23 +123,22 @@ __global__ void aes256_ecb_decrypt(const uint8_t *in, uint8_t *out, size_t nBloc
 
     // Final round: InvShiftRows + InvSubBytes, then AddRoundKey
     const uint8_t *isbox = d_inv_sbox;
-    // Apply InvShiftRows+InvSubBytes in little-endian layout
-    uint32_t r0 = ((uint32_t)isbox[ s0        & 0xFF]) |
-                  ((uint32_t)isbox[(s3 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s2 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s1 >> 24) & 0xFF] << 24);
-    uint32_t r1 = ((uint32_t)isbox[ s1        & 0xFF]) |
-                  ((uint32_t)isbox[(s0 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s3 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s2 >> 24) & 0xFF] << 24);
-    uint32_t r2 = ((uint32_t)isbox[ s2        & 0xFF]) |
-                  ((uint32_t)isbox[(s1 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s0 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s3 >> 24) & 0xFF] << 24);
-    uint32_t r3 = ((uint32_t)isbox[ s3        & 0xFF]) |
-                  ((uint32_t)isbox[(s2 >>  8) & 0xFF] << 8) |
-                  ((uint32_t)isbox[(s1 >> 16) & 0xFF] << 16) |
-                  ((uint32_t)isbox[(s0 >> 24) & 0xFF] << 24);
+    uint32_t r0 = ((uint32_t)isbox[B0(s0)] << 24) |
+                  ((uint32_t)isbox[B1(s1)] << 16) |
+                  ((uint32_t)isbox[B2(s2)] <<  8) |
+                  ((uint32_t)isbox[B3(s3)]);
+    uint32_t r1 = ((uint32_t)isbox[B0(s1)] << 24) |
+                  ((uint32_t)isbox[B1(s2)] << 16) |
+                  ((uint32_t)isbox[B2(s3)] <<  8) |
+                  ((uint32_t)isbox[B3(s0)]);
+    uint32_t r2 = ((uint32_t)isbox[B0(s2)] << 24) |
+                  ((uint32_t)isbox[B1(s3)] << 16) |
+                  ((uint32_t)isbox[B2(s0)] <<  8) |
+                  ((uint32_t)isbox[B3(s1)]);
+    uint32_t r3 = ((uint32_t)isbox[B0(s3)] << 24) |
+                  ((uint32_t)isbox[B1(s0)] << 16) |
+                  ((uint32_t)isbox[B2(s1)] <<  8) |
+                  ((uint32_t)isbox[B3(s2)]);
 
     r0 ^= rk[0];
     r1 ^= rk[1];
