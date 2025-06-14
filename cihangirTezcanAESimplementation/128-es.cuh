@@ -104,7 +104,6 @@ __global__ void exhaustiveSearch(u32* pt, u32* ct, u32* rk, u32* t0G, u32* t1G, 
 
 			// Calculate round key
 			u32 temp = rk3;
-			// TODO: temp & 0xff000000
 			rk0 = rk0 ^
 				(t4S[(temp >> 16) & 0xff] & 0xff000000) ^
 				(t4S[(temp >> 8) & 0xff] & 0x00ff0000) ^
