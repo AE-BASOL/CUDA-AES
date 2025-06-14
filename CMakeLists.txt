@@ -18,6 +18,7 @@ set(CUDA_SOURCES
     aes256_gcm.cu
     aes128_ecb.cu
     aes256_ecb.cu
+    aes128_bruteforce.cu
     main.cu
 )
 
