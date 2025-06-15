@@ -4,7 +4,7 @@ project(CudaProject LANGUAGES CXX CUDA)
 # Require CUDA and set standards
 find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 17) # Changed from 14 to 17
 
 # Target your GPU arch (8.6 for RTX 3050 Ti)
 set(CMAKE_CUDA_ARCHITECTURES 86)
@@ -62,3 +62,17 @@ target_compile_options(CudaProject PRIVATE
 set_property(TARGET CudaProject PROPERTY CUDA_ARCHITECTURES 86)
 set_source_files_properties(${CUDA_SOURCES} PROPERTIES
         CUDA_MAXIMUM_REGISTER_COUNT 64)  # ya da 128
+
+
+# In your CMakeLists.txt
+include_directories("C:/Users/efebasol/CLionProjects/aes_openSSL/openssl-3.3.3/include")
+
+target_link_libraries(CudaProject PRIVATE
+        "C:/Users/efebasol/CLionProjects/aes_openSSL/openssl-3.3.3/libssl.lib"
+        "C:/Users/efebasol/CLionProjects/aes_openSSL/openssl-3.3.3/libcrypto.lib"
+        crypt32.lib       # for Cert* functions
+        ws2_32.lib        # for socket-related functions
+        user32.lib
+        gdi32.lib
+        advapi32.lib
+        kernel32.lib)
