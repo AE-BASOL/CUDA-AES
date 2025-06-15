@@ -76,3 +76,19 @@ target_link_libraries(CudaProject PRIVATE
         gdi32.lib
         advapi32.lib
         kernel32.lib)
+
+# Custom target: dump PTX for aes128_ecb.cu and report size
+add_custom_target(ptx-dump
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bench
+    COMMAND nvcc -ptx -arch=sm_86 ${CMAKE_SOURCE_DIR}/aes128_ecb.cu -o ${CMAKE_BINARY_DIR}/bench/ptx_lookup.txt
+    COMMAND powershell -Command "Write-Host 'PTX dump file size:' (Get-Item '${CMAKE_BINARY_DIR}/bench/ptx_lookup.txt').Length 'bytes'"
+    COMMENT "Generating PTX for aes128_ecb.cu and reporting size"
+)
+
+# Custom target: profile with Nsight Systems
+add_custom_target(nsight-profile
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bench
+    COMMAND "C:/Program Files/NVIDIA Corporation/Nsight Systems 2025.1.3/target-windows-x64/nsys.exe" profile -o ${CMAKE_BINARY_DIR}/bench/my_run ${CMAKE_BINARY_DIR}/CudaProject.exe
+    COMMENT "Profiling CudaProject with Nsight Systems"
+)
+set(CMAKE_CUDA_HOST_COMPILER "C:/Path/To/VisualStudio/VC/Tools/MSVC/<version>/bin/Hostx64/x64/cl.exe")

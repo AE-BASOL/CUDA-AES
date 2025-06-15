@@ -12,6 +12,7 @@
 #include <iostream>
 #include "aes_common.h"
 #include "profiling_helpers.h"
+#include <iomanip> // For formatting output
 
 // -------------------------------
 // Error handling macro
@@ -31,6 +32,15 @@ constexpr int THREADS_PER_BLOCK = 256;
 constexpr int NUM_RUNS          = 5;
 static const size_t SIZES[]     = {1ull<<20, 10ull<<20, 100ull<<20, 1ull<<30};
 static const char*  MODES[]     = {"ecb-128","ecb-256","ctr-128","ctr-256","gcm-128","gcm-256"};
+
+// -------------------------------
+// Print header helper
+// -------------------------------
+inline void print_header() {
+    printf("%-10s %-10s %-12s %-5s %-10s %-10s %-5s\n",
+           "TYPE", "MODE", "SIZE_BYTES", "RUN", "MS", "GiB/s", "OP");
+    printf("-------------------------------------------------------------------------------------\n");
+}
 
 // -------------------------------
 // CTR helper
@@ -241,6 +251,28 @@ static int gcm_debug_run() {
 }
 
 // -------------------------------
+// [PYTHON_EXPORT] Helper function to ensure correct CSV headers
+// -------------------------------
+void ensure_csv_header(const std::string& filename, const std::string& header) {
+    std::ofstream file;
+    bool write_header = false;
+
+    if (!std::filesystem::exists(filename) || std::filesystem::file_size(filename) == 0) {
+        write_header = true;
+    }
+
+    if (write_header) {
+        file.open(filename, std::ios::out | std::ios::trunc);
+        if (file.is_open()) {
+            file << header << std::endl;
+            file.close();
+        } else {
+            fprintf(stderr, "Error: Could not open %s to write header.\n", filename.c_str());
+        }
+    }
+}
+
+// -------------------------------
 // Main benchmark loop
 // -------------------------------
 int main(int argc, char** argv) {
@@ -302,13 +334,19 @@ int main(int argc, char** argv) {
     }
     init_T_tables();
 
+    // [PYTHON_EXPORT] Define CSV headers
+    const std::string csv_header = "device,cipher,block_size,run_id,time_ms,GiB/s,operation";
+
+    // Ensure CSV headers are correct
+    ensure_csv_header("bench/thr_gpu.csv", csv_header);
+    ensure_csv_header("bench/thr_cpu.csv", csv_header);
+
     if(doCtrPreview) return ctr_preview();
     if(doGcmDebug)   return gcm_debug_run();
     if(doGfMult)     return gf_mult_bench();
 
-    // Print header for benchmark results
-    printf("%-10s %-10s %-12s %-5s %-10s %-10s %-5s\\n",
-           "TYPE", "MODE", "SIZE_BYTES", "RUN", "MS", "GiB/s", "OP");
+    // Print header for benchmark results ONCE before all results
+    print_header();
 
     std::mt19937_64 rng(12345);
     for(const char* modeStr : MODES){
@@ -327,8 +365,8 @@ int main(int argc, char** argv) {
         for(size_t sz : SIZES){
             size_t nBlocks=(sz+15)/16; size_t bytes=nBlocks*16;
 
-            printf("-------------------------------------------------------------------------------------\n");
-            printf("ROUND_TRIP_CHECK %-10s %-12zu\n", mode.c_str(), bytes); // <-- \n buraya eklendi ve : kaldırıldı
+            printf("\n================ ROUND %zu ================\n", sz);
+            printf("ROUND_TRIP_CHECK %-10s %-12zu\n", mode.c_str(), bytes);
 
             // Print Key and IV (first 8 bytes for brevity)
             printf("  Key Used:         ");
@@ -400,12 +438,12 @@ int main(int argc, char** argv) {
             for (size_t i = 0; i < bytes; ++i) {
                 if (h_rt_original[i] != h_rt_decrypted_gpu[i]) {
                     match = false;
-                    printf("FAIL - Mismatch at byte %zu: original %02x, decrypted %02x\\n", i, h_rt_original[i], h_rt_decrypted_gpu[i]);
+                    printf("FAIL - Mismatch at byte %zu: original %02x, decrypted %02x\n", i, h_rt_original[i], h_rt_decrypted_gpu[i]);
                     // Optionally print more context around mismatch
                     // size_t start_print = (i > 5) ? (i - 5) : 0;
                     // size_t end_print = (i + 5 < bytes) ? (i + 5) : bytes -1;
-                    // printf("Original:  "); for(size_t k=start_print; k<=end_print; ++k) printf("%02x ", h_rt_original[k]); printf("\\n");
-                    // printf("Decrypted: "); for(size_t k=start_print; k<=end_print; ++k) printf("%02x ", h_rt_decrypted_gpu[k]); printf("\\n");
+                    // printf("Original:  "); for(size_t k=start_print; k<=end_print; ++k) printf("%02x ", h_rt_original[k]); printf("\n");
+                    // printf("Decrypted: "); for(size_t k=start_print; k<=end_print; ++k) printf("%02x ", h_rt_decrypted_gpu[k]); printf("\n");
                     break;
                 }
             }
@@ -431,6 +469,8 @@ int main(int argc, char** argv) {
 
             // Original benchmarking loop for NUM_RUNS
             for(int run=1; run<=NUM_RUNS; ++run){
+                if(run == 1)                   // ➋ ilk RESULT_GPU/CPU’dan önce
+                    print_header();
                 uint8_t *h_in,*h_out; CHECK_CUDA(cudaMallocHost(&h_in,bytes)); CHECK_CUDA(cudaMallocHost(&h_out,bytes));
                 fill_random(h_in,bytes,rng);
                 uint8_t *d_in,*d_out,*d_tag=nullptr,*d_iv=nullptr;
@@ -442,27 +482,27 @@ int main(int argc, char** argv) {
                 // Create a descriptive NVTX range name for the entire benchmark iteration
                 char nvtx_benchmark_range_name[128];
                 snprintf(nvtx_benchmark_range_name, sizeof(nvtx_benchmark_range_name),
-                         "Benchmark_%s_%s_%zu_Run%d",
-                         mode.c_str(), (decrypt ? "DEC" : "ENC"), bytes, run);
+                         "%s-%d %s Run %d",
+                         mode.c_str(), bits, decrypt ? "DEC" : "ENC", run);
 
                 NVTX_PUSH(nvtx_benchmark_range_name); // Push NVTX range for the entire iteration
 
                 cudaEvent_t s,e; cudaEventCreate(&s); cudaEventCreate(&e);
                 cudaEventRecord(s);
                 if(!decrypt){
-                    if(isEcb && bits==128){ NVTX_PUSH("ecb128_enc_kernel"); aes128_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isEcb && bits==256){ NVTX_PUSH("ecb256_enc_kernel"); aes256_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("ctr128_enc_kernel"); aes128_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("ctr256_enc_kernel"); aes256_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isGcm && bits==128){ NVTX_PUSH("gcm128_enc_kernel"); aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
-                    else if(isGcm && bits==256){ NVTX_PUSH("gcm256_enc_kernel"); aes256_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
+                    if(isEcb && bits==128){ NVTX_PUSH("ECB-128 ENC kernel"); aes128_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 ENC kernel"); aes256_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 ENC kernel"); aes128_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 ENC kernel"); aes256_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 ENC kernel"); aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
+                    else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 ENC kernel"); aes256_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
                 } else {
-                    if(isEcb && bits==128){ NVTX_PUSH("ecb128_dec_kernel"); aes128_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isEcb && bits==256){ NVTX_PUSH("ecb256_dec_kernel"); aes256_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("ctr128_dec_kernel"); aes128_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("ctr256_dec_kernel"); aes256_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isGcm && bits==128){ NVTX_PUSH("gcm128_dec_kernel"); aes128_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
-                    else if(isGcm && bits==256){ NVTX_PUSH("gcm256_dec_kernel"); aes256_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
+                    if(isEcb && bits==128){ NVTX_PUSH("ECB-128 DEC kernel"); aes128_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 DEC kernel"); aes256_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 DEC kernel"); aes128_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 DEC kernel"); aes256_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 DEC kernel"); aes128_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
+                    else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 DEC kernel"); aes256_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
                 }
                 cudaEventRecord(e); CHECK_CUDA(cudaEventSynchronize(e));
                 NVTX_POP(); // Pop NVTX range for the entire iteration
@@ -470,7 +510,13 @@ int main(int argc, char** argv) {
                 float ms=0.0f; cudaEventElapsedTime(&ms,s,e);
                 double gib=(double)bytes/(double)(1ull<<30); double thr=gib/(ms/1000.0);
                 printf("RESULT_GPU %-10s %-12zu %-5d %-10.3f %-10.3f %-5s\n", mode.c_str(), bytes, run, ms, thr, decrypt?"DEC":"ENC");
-                std::ofstream fg("bench/thr_gpu.csv",std::ios::app); fg<<"RESULT_GPU,"<<mode<<","<<bytes<<","<<run<<","<<ms<<","<<thr<<","<<(decrypt?"DEC":"ENC")<<"\n";
+                std::ofstream gpu_csv("bench/thr_gpu.csv", std::ios::app);
+                if (gpu_csv.is_open()) {
+                    gpu_csv << "GPU," << mode << "," << bytes << "," << run << "," << std::fixed << std::setprecision(3) << ms << "," << thr << "," << (decrypt ? "DEC" : "ENC") << std::endl;
+                    gpu_csv.close();
+                } else {
+                    fprintf(stderr, "Error: Could not write to bench/thr_gpu.csv\n");
+                }
 
                 std::vector<uint8_t> host_in(bytes); CHECK_CUDA(cudaMemcpy(host_in.data(),d_in,bytes,cudaMemcpyDeviceToHost));
                 const EVP_CIPHER* (*sel)();
@@ -480,7 +526,13 @@ int main(int argc, char** argv) {
                 double cpu_thr = cpu_aes_throughput(host_in.data(), bytes, key.data(), bits, decrypt, sel);
                 double ms_cpu = (double)bytes/(cpu_thr*(1ull<<30))*1000.0;
                 printf("RESULT_CPU %-10s %-12zu %-5d %-10.3f %-10.3f %-5s\n", mode.c_str(), bytes, run, ms_cpu, cpu_thr, decrypt?"DEC":"ENC");
-                std::ofstream fc("bench/thr_cpu.csv",std::ios::app); fc<<"RESULT_CPU,"<<mode<<","<<bytes<<","<<run<<","<<ms_cpu<<","<<cpu_thr<<","<<(decrypt?"DEC":"ENC")<<"\n";
+                std::ofstream cpu_csv("bench/thr_cpu.csv", std::ios::app);
+                if (cpu_csv.is_open()) {
+                    cpu_csv << "CPU," << mode << "," << bytes << "," << run << "," << std::fixed << std::setprecision(3) << ms_cpu << "," << cpu_thr << "," << (decrypt ? "DEC" : "ENC") << std::endl;
+                    cpu_csv.close();
+                } else {
+                    fprintf(stderr, "Error: Could not write to bench/thr_cpu.csv\n");
+                }
 
                 CHECK_CUDA(cudaFreeHost(h_in)); CHECK_CUDA(cudaFreeHost(h_out));
                 CHECK_CUDA(cudaFree(d_in)); CHECK_CUDA(cudaFree(d_out)); if(d_tag) CHECK_CUDA(cudaFree(d_tag)); if(d_iv) CHECK_CUDA(cudaFree(d_iv));
@@ -490,33 +542,3 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-/*
-BUILD:
-cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release -j
-
-BASELINE RUN (all figures R-1..R-3):
-build/CudaProject.exe
-
-OCCUPANCY SWEEP (M-2, D-3):
-for %B in (32 64 128 256 512) do build\CudaProject.exe --block %B
-
-CTR COUNTER (I-4):
-build/CudaProject.exe --ctr-preview
-
-GHASH PARTIALS (M-3):
-build/CudaProject.exe --gcm-debug
-
-GF MULTIPLY (D-2):
-build/CudaProject.exe --gf-mult
-
-NSYS TIMELINE + MEM-TRACE (M-1 & M-4):
-nsys profile --trace cuda,nvtx -o bench/run build/CudaProject.exe
-
-ROOFLINE METRICS (M-5, D-1):
-ncu --metrics flop_count_sp,dram__bytes_read.sum,dram__bytes_write.sum
---set full --csv --target-processes all build/CudaProject.exe
-
-PTX DUMPS (D-5):
-nvdisasm --print-code aes128_ecb.cu.obj > bench/ptx_lookup.txt
-*/
