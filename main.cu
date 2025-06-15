@@ -30,6 +30,7 @@
 // -------------------------------
 constexpr int THREADS_PER_BLOCK = 256;
 constexpr int NUM_RUNS          = 5;
+constexpr int GF_MULT_ITERS    = 10000;
 static const size_t SIZES[]     = {1ull<<20, 10ull<<20, 100ull<<20, 1ull<<30};
 static const char*  MODES[]     = {"ecb-128","ecb-256","ctr-128","ctr-256","gcm-128","gcm-256"};
 
@@ -65,10 +66,10 @@ __device__ inline void gf_mul128_dev(uint64_t &Ah, uint64_t &Al, uint64_t Bh, ui
 }
 
 // Kernel performing many GF multiplies per thread
-__global__ void gf_mult_kernel(uint64_t *out) {
+__global__ void gf_mult_kernel(uint64_t *out, int iters) {
     uint64_t Ah=0x0123456789abcdefULL, Al=0xfedcba9876543210ULL;
     uint64_t Bh=0x0fedcba987654321ULL, Bl=0x1234567890abcdefULL;
-    for(int i=0;i<1000000;i++) {
+    for(int i=0;i<iters;i++) {
         gf_mul128_dev(Ah,Al,Bh,Bl);
         Bh += 1; Bl += 1;
     }
@@ -140,11 +141,14 @@ static int ctr_preview() {
     uint8_t *d_in,*d_out; CHECK_CUDA(cudaMalloc(&d_in,32)); CHECK_CUDA(cudaMalloc(&d_out,32));
     CHECK_CUDA(cudaMemset(d_in,0,32));
     uint64_t lo=0,hi=0; packCtr(iv.data(),lo,hi);
+    cudaStream_t stream; CHECK_CUDA(cudaStreamCreate(&stream));
     NVTX_PUSH("CTR_PREVIEW");
-    aes128_ctr_encrypt<<<1,1>>>(d_in,d_out,2,lo,hi);
-    CHECK_CUDA(cudaDeviceSynchronize());
+    aes128_ctr_encrypt<<<1,1,0,stream>>>(d_in,d_out,2,lo,hi);
+    uint8_t h_out[32];
+    CHECK_CUDA(cudaMemcpyAsync(h_out,d_out,32,cudaMemcpyDeviceToHost,stream));
+    CHECK_CUDA(cudaStreamSynchronize(stream));
     NVTX_POP();
-    uint8_t h_out[32]; CHECK_CUDA(cudaMemcpy(h_out,d_out,32,cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaStreamDestroy(stream));
     CHECK_CUDA(cudaFree(d_in)); CHECK_CUDA(cudaFree(d_out));
 
     printf("CTR_PREVIEW,");
@@ -169,7 +173,7 @@ static int gf_mult_bench() {
         __m128i a = _mm_set_epi64x(0x0123456789abcdefULL,0xfedcba9876543210ULL);
         __m128i b = _mm_set_epi64x(0x0fedcba987654321ULL,0x1234567890abcdefULL);
         auto t0=std::chrono::high_resolution_clock::now();
-        for(int i=0;i<1000000;i++) {
+        for(int i=0;i<GF_MULT_ITERS;i++) {
             __m128i r = _mm_clmulepi64_si128(a,b,0x00);
             a = _mm_xor_si128(a,r);
             b = _mm_xor_si128(b,r);
@@ -177,22 +181,25 @@ static int gf_mult_bench() {
         auto t1=std::chrono::high_resolution_clock::now();
         ms_cpu=std::chrono::duration<double,std::milli>(t1-t0).count();
     }
-    double gbps_cpu = (1000000.0*128/1e9) / (ms_cpu/1000.0);
+    double gbps_cpu = (GF_MULT_ITERS*128.0/1e9) / (ms_cpu/1000.0);
 
     // GPU part
     float ms_gpu=0.0; double gbps_gpu=0.0; {
         uint64_t *d_out; CHECK_CUDA(cudaMalloc(&d_out, THREADS_PER_BLOCK*sizeof(uint64_t)));
+        cudaStream_t stream; CHECK_CUDA(cudaStreamCreate(&stream));
         cudaEvent_t s,e; cudaEventCreate(&s); cudaEventCreate(&e);
-        cudaEventRecord(s);
-        gf_mult_kernel<<<1,THREADS_PER_BLOCK>>>(d_out);
-        cudaEventRecord(e); CHECK_CUDA(cudaEventSynchronize(e));
-        cudaEventElapsedTime(&ms_gpu,s,e); CHECK_CUDA(cudaFree(d_out));
-        gbps_gpu = (1000000.0*THREADS_PER_BLOCK*128/1e9) / (ms_gpu/1000.0);
+        cudaEventRecord(s, stream);
+        gf_mult_kernel<<<1,THREADS_PER_BLOCK,0,stream>>>(d_out, GF_MULT_ITERS);
+        cudaEventRecord(e, stream); CHECK_CUDA(cudaEventSynchronize(e));
+        cudaEventElapsedTime(&ms_gpu,s,e);
+        CHECK_CUDA(cudaStreamDestroy(stream));
+        CHECK_CUDA(cudaFree(d_out));
+        gbps_gpu = (GF_MULT_ITERS*THREADS_PER_BLOCK*128.0/1e9) / (ms_gpu/1000.0);
     }
 
     std::ofstream f("bench/gf_mult.csv", std::ios::app);
-    f << "SRC,CPU,1000000," << ms_cpu << ',' << gbps_cpu << "\n";
-    f << "SRC,GPU," << (1000000*THREADS_PER_BLOCK) << ',' << ms_gpu << ',' << gbps_gpu << "\n";
+    f << "SRC,CPU," << GF_MULT_ITERS << ',' << ms_cpu << ',' << gbps_cpu << "\n";
+    f << "SRC,GPU," << (GF_MULT_ITERS*THREADS_PER_BLOCK) << ',' << ms_gpu << ',' << gbps_gpu << "\n";
     std::cout << "GF_MULT CPU "<<gbps_cpu<<" Gbps\n";
     std::cout << "GF_MULT GPU "<<gbps_gpu<<" Gbps\n";
     return 0;
@@ -216,30 +223,33 @@ static int gcm_debug_run() {
     std::vector<uint8_t> iv(12);  fill_random(iv.data(),12,rng);
     std::vector<uint32_t> rk(44); expandKey128(key.data(), rk.data());
     init_roundKeys(rk.data(), (int)rk.size());
+    cudaStream_t stream; CHECK_CUDA(cudaStreamCreate(&stream));
     uint8_t *d_plain,*d_cipher,*d_tag,*d_iv; CHECK_CUDA(cudaMalloc(&d_plain,bytes)); CHECK_CUDA(cudaMalloc(&d_cipher,bytes)); CHECK_CUDA(cudaMalloc(&d_tag,16)); CHECK_CUDA(cudaMalloc(&d_iv,12));
-    CHECK_CUDA(cudaMemcpy(d_plain,h_plain,bytes,cudaMemcpyHostToDevice));
-    CHECK_CUDA(cudaMemcpy(d_iv,iv.data(),12,cudaMemcpyHostToDevice));
-    aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_plain,d_cipher,nBlocks,d_iv,d_tag);
-    CHECK_CUDA(cudaDeviceSynchronize());
-    CHECK_CUDA(cudaMemcpy(h_cipher,d_cipher,bytes,cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpyAsync(d_plain,h_plain,bytes,cudaMemcpyHostToDevice,stream));
+    CHECK_CUDA(cudaMemcpyAsync(d_iv,iv.data(),12,cudaMemcpyHostToDevice,stream));
+    aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK,0,stream>>>(d_plain,d_cipher,nBlocks,d_iv,d_tag);
+    CHECK_CUDA(cudaMemcpyAsync(h_cipher,d_cipher,bytes,cudaMemcpyDeviceToHost,stream));
+    CHECK_CUDA(cudaStreamSynchronize(stream));
 
     // compute H = AES_k(0)
     uint8_t *d_zero,*d_h; CHECK_CUDA(cudaMalloc(&d_zero,16)); CHECK_CUDA(cudaMalloc(&d_h,16));
     CHECK_CUDA(cudaMemset(d_zero,0,16));
-    aes128_ecb_encrypt<<<1,1>>>(d_zero,d_h,1);
-    CHECK_CUDA(cudaDeviceSynchronize());
-    uint8_t hbuf[16]; CHECK_CUDA(cudaMemcpy(hbuf,d_h,16,cudaMemcpyDeviceToHost));
+    aes128_ecb_encrypt<<<1,1,0,stream>>>(d_zero,d_h,1);
+    uint8_t hbuf[16];
+    CHECK_CUDA(cudaMemcpyAsync(hbuf,d_h,16,cudaMemcpyDeviceToHost,stream));
+    CHECK_CUDA(cudaStreamSynchronize(stream));
     uint64_t Hl=((uint64_t*)hbuf)[0]; uint64_t Hh=((uint64_t*)hbuf)[1];
     CHECK_CUDA(cudaFree(d_zero)); CHECK_CUDA(cudaFree(d_h));
 
     // partial GHASH
     uint64_t *d_ph,*d_pl; CHECK_CUDA(cudaMalloc(&d_ph,THREADS_PER_BLOCK*sizeof(uint64_t))); CHECK_CUDA(cudaMalloc(&d_pl,THREADS_PER_BLOCK*sizeof(uint64_t)));
-    gcm_partial_kernel<<<1,THREADS_PER_BLOCK>>>(d_cipher,nBlocks,Hh,Hl,d_ph,d_pl);
-    CHECK_CUDA(cudaDeviceSynchronize());
+    gcm_partial_kernel<<<1,THREADS_PER_BLOCK,0,stream>>>(d_cipher,nBlocks,Hh,Hl,d_ph,d_pl);
     std::vector<uint64_t> ph(THREADS_PER_BLOCK), pl(THREADS_PER_BLOCK);
-    CHECK_CUDA(cudaMemcpy(ph.data(),d_ph,THREADS_PER_BLOCK*sizeof(uint64_t),cudaMemcpyDeviceToHost));
-    CHECK_CUDA(cudaMemcpy(pl.data(),d_pl,THREADS_PER_BLOCK*sizeof(uint64_t),cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpyAsync(ph.data(),d_ph,THREADS_PER_BLOCK*sizeof(uint64_t),cudaMemcpyDeviceToHost,stream));
+    CHECK_CUDA(cudaMemcpyAsync(pl.data(),d_pl,THREADS_PER_BLOCK*sizeof(uint64_t),cudaMemcpyDeviceToHost,stream));
+    CHECK_CUDA(cudaStreamSynchronize(stream));
     CHECK_CUDA(cudaFree(d_ph)); CHECK_CUDA(cudaFree(d_pl));
+    CHECK_CUDA(cudaStreamDestroy(stream));
     std::ofstream out("bench/ghash_partials.txt");
     for(int i=0;i<THREADS_PER_BLOCK;i++)
         out << i << "," << std::hex << ph[i] << "," << pl[i] << std::dec << "\n";
@@ -401,38 +411,37 @@ int main(int argc, char** argv) {
             dim3 rt_kernel_grid_dim((unsigned)((nBlocks + rt_kernel_block_dim.x - 1) / rt_kernel_block_dim.x));
             if (isGcm) rt_kernel_grid_dim.x = 1; // GCM kernels typically use 1 block
 
+            cudaStream_t rt_stream; CHECK_CUDA(cudaStreamCreate(&rt_stream));
             if (isGcm) {
                 CHECK_CUDA(cudaMalloc(&d_rt_iv, 12));
                 CHECK_CUDA(cudaMalloc(&d_rt_tag_encrypt, 16));
                 CHECK_CUDA(cudaMalloc(&d_rt_tag_decrypt_out, 16));
-                CHECK_CUDA(cudaMemcpy(d_rt_iv, iv.data(), 12, cudaMemcpyHostToDevice));
+                CHECK_CUDA(cudaMemcpyAsync(d_rt_iv, iv.data(), 12, cudaMemcpyHostToDevice, rt_stream));
             }
 
             // Perform Encryption
-            if(isEcb && bits==128) aes128_ecb_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks);
-            else if(isEcb && bits==256) aes256_ecb_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks);
-            else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes128_ctr_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks,lo,hi); }
-            else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes256_ctr_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks,lo,hi); }
-            else if(isGcm && bits==128) aes128_gcm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
-            else if(isGcm && bits==256) aes256_gcm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
-            CHECK_CUDA(cudaDeviceSynchronize());
+            if(isEcb && bits==128) aes128_ecb_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_plain, d_rt_cipher, nBlocks);
+            else if(isEcb && bits==256) aes256_ecb_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_plain, d_rt_cipher, nBlocks);
+            else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes128_ctr_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_plain, d_rt_cipher, nBlocks,lo,hi); }
+            else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes256_ctr_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_plain, d_rt_cipher, nBlocks,lo,hi); }
+            else if(isGcm && bits==128) aes128_gcm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
+            else if(isGcm && bits==256) aes256_gcm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
+            CHECK_CUDA(cudaMemcpyAsync(h_rt_cipher_gpu, d_rt_cipher, bytes, cudaMemcpyDeviceToHost, rt_stream));
+            CHECK_CUDA(cudaStreamSynchronize(rt_stream));
 
-            // Copy ciphertext from GPU to host for printing a sample
-            CHECK_CUDA(cudaMemcpy(h_rt_cipher_gpu, d_rt_cipher, bytes, cudaMemcpyDeviceToHost));
             printf("  Ciphertext (GPU): ");
             for(int c_idx = 0; c_idx < std::min((size_t)16, bytes); ++c_idx) printf("%02x", h_rt_cipher_gpu[c_idx]);
             printf("...\n");
 
             // Perform Decryption
-            if(isEcb && bits==128) aes128_ecb_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks);
-            else if(isEcb && bits==256) aes256_ecb_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks);
-            else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes128_ctr_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks,lo,hi); }
-            else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes256_ctr_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks,lo,hi); }
-            else if(isGcm && bits==128) aes128_gcm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
-            else if(isGcm && bits==256) aes256_gcm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
-            CHECK_CUDA(cudaDeviceSynchronize());
-
-            CHECK_CUDA(cudaMemcpy(h_rt_decrypted_gpu, d_rt_decrypted_final, bytes, cudaMemcpyDeviceToHost));
+            if(isEcb && bits==128) aes128_ecb_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks);
+            else if(isEcb && bits==256) aes256_ecb_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks);
+            else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes128_ctr_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks,lo,hi); }
+            else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes256_ctr_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks,lo,hi); }
+            else if(isGcm && bits==128) aes128_gcm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
+            else if(isGcm && bits==256) aes256_gcm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim,0,rt_stream>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
+            CHECK_CUDA(cudaMemcpyAsync(h_rt_decrypted_gpu, d_rt_decrypted_final, bytes, cudaMemcpyDeviceToHost, rt_stream));
+            CHECK_CUDA(cudaStreamSynchronize(rt_stream));
 
             bool match = true;
             for (size_t i = 0; i < bytes; ++i) {
@@ -456,6 +465,8 @@ int main(int argc, char** argv) {
                 printf("  Result:           FAIL\n"); // Ensure FAIL is also followed by a newline and indented
             }
 
+            CHECK_CUDA(cudaStreamDestroy(rt_stream));
+
             CHECK_CUDA(cudaFreeHost(h_rt_original));
             CHECK_CUDA(cudaFreeHost(h_rt_decrypted_gpu));
             CHECK_CUDA(cudaFreeHost(h_rt_cipher_gpu)); // Free the new host buffer
@@ -475,8 +486,9 @@ int main(int argc, char** argv) {
                 fill_random(h_in,bytes,rng);
                 uint8_t *d_in,*d_out,*d_tag=nullptr,*d_iv=nullptr;
                 CHECK_CUDA(cudaMalloc(&d_in,bytes)); CHECK_CUDA(cudaMalloc(&d_out,bytes));
-                if(isGcm) { CHECK_CUDA(cudaMalloc(&d_tag,16)); CHECK_CUDA(cudaMalloc(&d_iv,12)); CHECK_CUDA(cudaMemcpy(d_iv,iv.data(),12,cudaMemcpyHostToDevice)); }
-                CHECK_CUDA(cudaMemcpy(d_in,h_in,bytes,cudaMemcpyHostToDevice));
+                cudaStream_t stream; CHECK_CUDA(cudaStreamCreate(&stream));
+                if(isGcm) { CHECK_CUDA(cudaMalloc(&d_tag,16)); CHECK_CUDA(cudaMalloc(&d_iv,12)); CHECK_CUDA(cudaMemcpyAsync(d_iv,iv.data(),12,cudaMemcpyHostToDevice,stream)); }
+                CHECK_CUDA(cudaMemcpyAsync(d_in,h_in,bytes,cudaMemcpyHostToDevice,stream));
                 dim3 block(blockOverride); dim3 grid((unsigned)((nBlocks+block.x-1)/block.x));
 
                 // Create a descriptive NVTX range name for the entire benchmark iteration
@@ -488,23 +500,23 @@ int main(int argc, char** argv) {
                 NVTX_PUSH(nvtx_benchmark_range_name); // Push NVTX range for the entire iteration
 
                 cudaEvent_t s,e; cudaEventCreate(&s); cudaEventCreate(&e);
-                cudaEventRecord(s);
+                cudaEventRecord(s, stream);
                 if(!decrypt){
-                    if(isEcb && bits==128){ NVTX_PUSH("ECB-128 ENC kernel"); aes128_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 ENC kernel"); aes256_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 ENC kernel"); aes128_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 ENC kernel"); aes256_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 ENC kernel"); aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
-                    else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 ENC kernel"); aes256_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
+                    if(isEcb && bits==128){ NVTX_PUSH("ECB-128 ENC kernel"); aes128_ecb_encrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 ENC kernel"); aes256_ecb_encrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 ENC kernel"); aes128_ctr_encrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 ENC kernel"); aes256_ctr_encrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 ENC kernel"); aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK,0,stream>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
+                    else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 ENC kernel"); aes256_gcm_encrypt<<<1,THREADS_PER_BLOCK,0,stream>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
                 } else {
-                    if(isEcb && bits==128){ NVTX_PUSH("ECB-128 DEC kernel"); aes128_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 DEC kernel"); aes256_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
-                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 DEC kernel"); aes128_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 DEC kernel"); aes256_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
-                    else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 DEC kernel"); aes128_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
-                    else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 DEC kernel"); aes256_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
+                    if(isEcb && bits==128){ NVTX_PUSH("ECB-128 DEC kernel"); aes128_ecb_decrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 DEC kernel"); aes256_ecb_decrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 DEC kernel"); aes128_ctr_decrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 DEC kernel"); aes256_ctr_decrypt<<<grid,block,0,stream>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
+                    else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 DEC kernel"); aes128_gcm_decrypt<<<1,THREADS_PER_BLOCK,0,stream>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
+                    else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 DEC kernel"); aes256_gcm_decrypt<<<1,THREADS_PER_BLOCK,0,stream>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
                 }
-                cudaEventRecord(e); CHECK_CUDA(cudaEventSynchronize(e));
+                cudaEventRecord(e, stream); CHECK_CUDA(cudaEventSynchronize(e));
                 NVTX_POP(); // Pop NVTX range for the entire iteration
 
                 float ms=0.0f; cudaEventElapsedTime(&ms,s,e);
@@ -518,7 +530,8 @@ int main(int argc, char** argv) {
                     fprintf(stderr, "Error: Could not write to bench/thr_gpu.csv\n");
                 }
 
-                std::vector<uint8_t> host_in(bytes); CHECK_CUDA(cudaMemcpy(host_in.data(),d_in,bytes,cudaMemcpyDeviceToHost));
+                std::vector<uint8_t> host_in(bytes); CHECK_CUDA(cudaMemcpyAsync(host_in.data(),d_in,bytes,cudaMemcpyDeviceToHost,stream));
+                CHECK_CUDA(cudaStreamSynchronize(stream));
                 const EVP_CIPHER* (*sel)();
                 if(isEcb&&bits==128) sel=&EVP_aes_128_ecb; else if(isEcb&&bits==256) sel=&EVP_aes_256_ecb;
                 else if(isCtr&&bits==128) sel=&EVP_aes_128_ctr; else if(isCtr&&bits==256) sel=&EVP_aes_256_ctr;
@@ -534,6 +547,7 @@ int main(int argc, char** argv) {
                     fprintf(stderr, "Error: Could not write to bench/thr_cpu.csv\n");
                 }
 
+                CHECK_CUDA(cudaStreamDestroy(stream));
                 CHECK_CUDA(cudaFreeHost(h_in)); CHECK_CUDA(cudaFreeHost(h_out));
                 CHECK_CUDA(cudaFree(d_in)); CHECK_CUDA(cudaFree(d_out)); if(d_tag) CHECK_CUDA(cudaFree(d_tag)); if(d_iv) CHECK_CUDA(cudaFree(d_iv));
             }

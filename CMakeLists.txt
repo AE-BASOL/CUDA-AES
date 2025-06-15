@@ -6,8 +6,9 @@ find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17) # Changed from 14 to 17
 
-# Target your GPU arch (8.6 for RTX 3050 Ti)
-set(CMAKE_CUDA_ARCHITECTURES 86)
+# Target a range of GPU architectures
+# This allows the binaries to run efficiently on multiple GPU generations
+set(CMAKE_CUDA_ARCHITECTURES 70;75;80;86)
 
 # Explicitly list CUDA source files
 set(CUDA_SOURCES
@@ -59,9 +60,11 @@ target_compile_options(CudaProject PRIVATE
 )
 
 # 3. (Opsiyonel) Kayıt sayısını sınırlayarak ilave latency azaltma
-set_property(TARGET CudaProject PROPERTY CUDA_ARCHITECTURES 86)
-set_source_files_properties(${CUDA_SOURCES} PROPERTIES
-        CUDA_MAXIMUM_REGISTER_COUNT 64)  # ya da 128
+# Propagate the architectures list to the target
+set_property(TARGET CudaProject PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+# Allow the compiler to manage register usage
+# set_source_files_properties(${CUDA_SOURCES} PROPERTIES
+#         CUDA_MAXIMUM_REGISTER_COUNT 64)  # manual limit removed
 
 
 # In your CMakeLists.txt
