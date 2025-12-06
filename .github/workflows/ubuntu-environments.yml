@@ -1,0 +1,66 @@
+name: Ubuntu Environments CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install CUDA Toolkit
+      uses: Jimver/cuda-toolkit@v0.2.16
+      id: cuda-toolkit
+      with:
+        cuda: '12.2.0'
+        method: 'network'
+        sub-packages: '["nvcc", "cudart"]'
+    
+    - name: Verify CUDA installation
+      run: |
+        nvcc --version
+        which nvcc
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libssl-dev
+    
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+      env:
+        CUDACXX: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}/bin/nvcc
+    
+    - name: Build project
+      run: |
+        cd build
+        make -j$(nproc)
+    
+    - name: Verify build artifacts
+      run: |
+        ls -lh build/
+        file build/CudaProject || echo "Executable not found"
+    
+    - name: Display environment info
+      run: |
+        echo "OS: ${{ matrix.os }}"
+        echo "CUDA Path: ${{ steps.cuda-toolkit.outputs.CUDA_PATH }}"
+        uname -a
+        cmake --version
+        nvcc --version
