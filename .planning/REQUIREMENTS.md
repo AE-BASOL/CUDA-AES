@@ -18,6 +18,7 @@
 - [ ] **BUILD-02**: Developer can select CUDA architecture through CMake configuration.
 - [ ] **BUILD-03**: Developer can build the benchmark target from documented commands.
 - [ ] **BUILD-04**: Developer can identify required CUDA, compiler, OpenSSL, and platform prerequisites.
+- [ ] **BUILD-05**: Developer can configure or diagnose the CUDA host compiler requirement without editing source files.
 
 ### Correctness
 
@@ -26,6 +27,9 @@
 - [ ] **TEST-03**: Developer can run deterministic AES-128 and AES-256 GCM known-answer tests, including tag behavior.
 - [ ] **TEST-04**: Developer can run a small smoke test without allocating 1 GiB buffers.
 - [ ] **TEST-05**: Maintainer can see correctness status before trusting benchmark output.
+- [ ] **TEST-06**: GCM decrypt rejects unauthenticated ciphertext before plaintext is accepted as valid.
+- [ ] **TEST-07**: GCM IV/counter initialization is correct for all threads in a multi-warp block.
+- [ ] **TEST-08**: GCM tag generation matches standard AES-GCM including length block and final `E(K, J0)` XOR.
 
 ### Benchmark Reproducibility
 
@@ -34,6 +38,7 @@
 - [ ] **BENCH-03**: Developer can save raw benchmark output in machine-readable CSV or JSON.
 - [ ] **BENCH-04**: Developer can generate summary tables from raw output.
 - [ ] **BENCH-05**: Reader can inspect benchmark methodology and limitations before reading claims.
+- [ ] **BENCH-06**: Benchmark runs release CUDA event resources and do not leak timing resources across long runs.
 
 ### AES Mode Coverage
 
@@ -65,9 +70,9 @@
 
 ### Broader Benchmarking
 
-- **BENCH-06**: Developer can compare multiple GPU models in a standardized results table.
-- **BENCH-07**: Developer can run benchmark matrix automation across CUDA versions and architectures.
-- **BENCH-08**: Reader can view charts generated from benchmark data.
+- **BENCH-07**: Developer can compare multiple GPU models in a standardized results table.
+- **BENCH-08**: Developer can run benchmark matrix automation across CUDA versions and architectures.
+- **BENCH-09**: Reader can view charts generated from benchmark data.
 - **MODE-09**: Developer can benchmark GMAC and CMAC as standalone authentication/MAC workloads.
 
 ### Library/API
@@ -100,16 +105,21 @@
 | BUILD-02 | Phase 1 | Pending |
 | BUILD-03 | Phase 1 | Pending |
 | BUILD-04 | Phase 1 | Pending |
+| BUILD-05 | Phase 1 | Pending |
 | TEST-01 | Phase 2 | Pending |
 | TEST-02 | Phase 2 | Pending |
 | TEST-03 | Phase 2 | Pending |
 | TEST-04 | Phase 2 | Pending |
 | TEST-05 | Phase 2 | Pending |
+| TEST-06 | Phase 2 | Pending |
+| TEST-07 | Phase 2 | Pending |
+| TEST-08 | Phase 2 | Pending |
 | BENCH-01 | Phase 3 | Pending |
 | BENCH-02 | Phase 3 | Pending |
 | BENCH-03 | Phase 3 | Pending |
 | BENCH-04 | Phase 3 | Pending |
 | BENCH-05 | Phase 3 | Pending |
+| BENCH-06 | Phase 3 | Pending |
 | MODE-01 | Phase 4 | Pending |
 | REPO-02 | Phase 4 | Pending |
 | REPO-03 | Phase 4 | Pending |
@@ -132,8 +142,8 @@
 | MAINT-04 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 35 total
-- Mapped to phases: 35
+- v1 requirements: 40 total
+- Mapped to phases: 40
 - Unmapped: 0
 
 ---

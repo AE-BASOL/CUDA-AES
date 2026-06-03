@@ -8,9 +8,9 @@
 
 | Phase | Name | Goal | Requirements |
 |-------|------|------|--------------|
-| 1 | Repository And Build Foundation | Make the repo clean, portable, and buildable by an outside developer. | REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04 |
-| 2 | Correctness Baseline | Prove AES outputs before publishing benchmark claims. | TEST-01, TEST-02, TEST-03, TEST-04, TEST-05 |
-| 3 | Reproducible Benchmark Harness | Make benchmark runs repeatable, inspectable, and summarizable. | BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05 |
+| 1 | Repository And Build Foundation | Make the repo clean, portable, and buildable by an outside developer. | REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05 |
+| 2 | Correctness Baseline | Prove AES outputs before publishing benchmark claims and close the GCM review blockers. | TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08 |
+| 3 | Reproducible Benchmark Harness | Make benchmark runs repeatable, inspectable, resource-clean, and summarizable. | BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05, BENCH-06 |
 | 4 | Open-Source Documentation Package | Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix. | REPO-02, REPO-03, DOCS-01, DOCS-02, DOCS-03, DOCS-05, MODE-01 |
 | 5 | Confidentiality Mode Expansion | Add the missing SP 800-38A confidentiality modes: CBC, CFB, and OFB. | MODE-02, MODE-03, MODE-04 |
 | 6 | Authenticated And Specialized Mode Expansion | Add CCM, XTS-AES, AES-KW, AES-KWP, and document GMAC/CMAC boundaries. | MODE-05, MODE-06, MODE-07, MODE-08 |
@@ -21,7 +21,7 @@
 
 **Goal:** Make the repo clean, portable, and buildable by an outside developer.
 
-**Requirements:** REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04
+**Requirements:** REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05
 
 **Success criteria:**
 1. Fresh clone does not rely on checked build output or IDE state.
@@ -29,25 +29,28 @@
 3. CUDA architecture and OpenSSL locations are configurable or discovered.
 4. README build commands match the actual supported platform.
 5. A clean configure/build command is documented and works on the maintainer machine.
+6. CUDA host compiler setup is documented or surfaced through a clear configure-time diagnostic.
 
 ## Phase 2: Correctness Baseline
 
-**Goal:** Prove AES outputs before publishing benchmark claims.
+**Goal:** Prove AES outputs before publishing benchmark claims and close the GCM review blockers.
 
-**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
+**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08
 
 **Success criteria:**
 1. Known-answer tests cover ECB, CTR, and GCM for AES-128 and AES-256.
-2. GCM tag generation and negative/tag-mismatch behavior are explicitly tested or explicitly documented as limited.
+2. GCM decrypt rejects tag mismatches before plaintext is accepted as valid.
 3. A small smoke test runs quickly without 1 GiB allocation.
 4. Correctness checks are available through documented build/test commands.
 5. Benchmark docs state that results are trusted only after correctness checks pass.
+6. GCM IV/counter state is broadcast correctly across all warps in a 256-thread block.
+7. GCM tag generation matches standard AES-GCM, including length block and final `E(K, J0)` XOR.
 
 ## Phase 3: Reproducible Benchmark Harness
 
-**Goal:** Make benchmark runs repeatable, inspectable, and summarizable.
+**Goal:** Make benchmark runs repeatable, inspectable, resource-clean, and summarizable.
 
-**Requirements:** BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05
+**Requirements:** BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05, BENCH-06
 
 **Success criteria:**
 1. A script captures hardware/software environment and benchmark parameters.
@@ -55,6 +58,7 @@
 3. Summary generation computes clear tables from raw output.
 4. Kernel-only and end-to-end timing are separated or explicitly labeled.
 5. Methodology documentation explains limitations, warmup, repetitions, clocks, and CPU baseline.
+6. CUDA timing events are destroyed or wrapped in RAII so long runs do not leak event resources.
 
 ## Phase 4: Open-Source Documentation Package
 
@@ -124,8 +128,8 @@
 
 ## Coverage
 
-- v1 requirements: 35
-- mapped requirements: 35
+- v1 requirements: 40
+- mapped requirements: 40
 - unmapped requirements: 0
 
 ---

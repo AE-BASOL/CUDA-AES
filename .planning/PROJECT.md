@@ -46,6 +46,8 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 
 The repository is brownfield CUDA/C++ code. Current code is useful but not yet ready for public prestige: build files contain absolute Windows paths, generated build artifacts exist locally, there is no formal test framework, and GCM/correctness semantics need stronger validation before public claims.
 
+A main-branch code review on 2026-06-04 found three high-severity AES-GCM blockers: decrypt accepts unauthenticated ciphertext, IV broadcast uses warp-local `__shfl_sync` incorrectly for a 256-thread block, and tag generation is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR. It also confirmed the public build is blocked by CUDA host compiler discovery and maintainer-local CMake paths.
+
 The desired positioning is:
 
 - Primary identity: reproducible GPU AES benchmark suite.
@@ -66,6 +68,7 @@ Current external best-practice signals:
 - **Credibility**: Benchmark claims must be reproducible and should distinguish kernel-only timing from end-to-end timing.
 - **Security**: Present the project as benchmark/research software unless and until cryptographic API hardening is complete.
 - **Portability**: Remove local absolute paths before public release.
+- **Correctness gate**: Do not present GCM benchmark output as standard AES-GCM until the review findings in `.planning/reviews/2026-06-04-main-branch-code-review.md` are fixed and tested.
 - **Hardware specificity**: Results must name GPU model, compute capability, driver, CUDA Toolkit, OS, compiler, clocks/persistence mode, and command line.
 - **SEO**: Use clear natural-language headings and project metadata; do not degrade README quality with keyword stuffing.
 - **Maintenance**: A living repo needs issues, releases, changelog, security contact, and contribution expectations.
@@ -80,6 +83,7 @@ Current external best-practice signals:
 | Treat library/API use as out of scope for v1 | Avoid implying production cryptographic safety before tests and API hardening exist. | Pending |
 | Build SEO through documentation quality | Search engines and developers both reward clear, useful, crawlable content. | Pending |
 | Plan full AES mode coverage | The prestige target is stronger if the roadmap covers all important AES modes, not only current ECB/CTR/GCM code. | Pending |
+| Treat GCM review findings as blockers | Public benchmark credibility depends on standard AES-GCM correctness and authentication semantics. | Pending |
 
 ## Evolution
 

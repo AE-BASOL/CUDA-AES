@@ -76,3 +76,12 @@ The codebase is functional benchmark/experimentation code, but it has portabilit
 - Add a small deterministic benchmark/test mode that avoids 1 GiB allocation by default.
 - Keep generated build outputs out of repository operations and scans.
 
+## Imported Review Findings
+
+The 2026-06-04 main branch review in `.planning/reviews/2026-06-04-main-branch-code-review.md` escalates several concerns into blockers:
+
+- GCM decrypt currently accepts unauthenticated ciphertext because computed tags are not checked before plaintext is accepted.
+- GCM IV/counter broadcast uses warp-local `__shfl_sync`, which is incorrect for threads outside the first warp in a 256-thread block.
+- GCM tag output is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR.
+- Public CMake configuration is blocked by local absolute paths and CUDA host compiler detection problems.
+- Benchmark timing paths create CUDA events without destroying them.
