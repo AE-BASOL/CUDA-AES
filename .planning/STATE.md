@@ -3,12 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-06-03T23:02:17.112Z"
+last_updated: "2026-06-03T23:10:19.885Z"
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 3
   completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -31,6 +32,14 @@ Phase 1: Repository And Build Foundation
 **Goal:** Make the repo clean, portable, and buildable by an outside developer.
 
 **Requirements:** REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05
+**Planning status:** Ready to execute
+**Plans:** 3 plans in 2 waves
+
+| Plan | Wave | Focus |
+|------|------|-------|
+| `01-01` | 1 | Portable CMake and dependency discovery |
+| `01-02` | 1 | Repository hygiene and canonical source boundary |
+| `01-03` | 2 | Build-focused README and known limitations |
 
 ## Status
 
@@ -40,6 +49,7 @@ Phase 1: Repository And Build Foundation
 - Requirements defined: `.planning/REQUIREMENTS.md`
 - Roadmap created: `.planning/ROADMAP.md`
 - Main branch review imported: `.planning/reviews/2026-06-04-main-branch-code-review.md`
+- Phase 1 planned: `.planning/phases/01-repository-and-build-foundation/`
 
 ## Review-Derived Blockers
 
@@ -49,7 +59,7 @@ Phase 1: Repository And Build Foundation
 
 ## Next Command
 
-`$gsd-discuss-phase 1`
+`$gsd-execute-phase 1`
 
 ## Scope Note
 

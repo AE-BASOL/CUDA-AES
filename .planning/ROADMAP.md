@@ -31,6 +31,16 @@
 5. A clean configure/build command is documented and works on the maintainer machine.
 6. CUDA host compiler setup is documented or surfaced through a clear configure-time diagnostic.
 
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `01-01` | 1 | Portable CMake, OpenSSL/CUDA package discovery, configurable CUDA architecture, host compiler diagnostics |
+| `01-02` | 1 | Repository hygiene audit, ignore-rule cleanup, canonical top-level source boundary note |
+| `01-03` | 2 | README build prerequisites, configure/build commands, Windows `cl.exe` troubleshooting, GCM limitation note |
+
+**Wave 2 blocked on Wave 1 completion.**
+
 ## Phase 2: Correctness Baseline
 
 **Goal:** Prove AES outputs before publishing benchmark claims and close the GCM review blockers.
