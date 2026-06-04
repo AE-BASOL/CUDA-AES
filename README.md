@@ -90,6 +90,14 @@ Benchmark artifacts are written under `bench/` by default, or under the director
 
 Raw result columns are stable for Phase 3: `schema_version`, `benchmark_run_id`, `timing_scope`, `device`, `cipher`, `block_size`, `run_index`, `run_count`, `time_ms`, `GiB/s`, `operation`, and `command_line`.
 
+Generate a summary table from the raw CSV files:
+
+```bash
+python scripts/summarize_benchmarks.py bench/thr_gpu.csv bench/thr_cpu.csv -o bench/summary.md
+```
+
+The summary groups by device, cipher, operation, block size, and timing scope, then reports count, min, mean, median, and max for time and throughput. It preserves `timing_scope`, so kernel-only GPU rows are not mixed with CPU baseline or future end-to-end rows.
+
 Example output:
 
 ```text

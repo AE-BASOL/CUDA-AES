@@ -94,6 +94,14 @@ Expected raw artifacts:
 - `bench/smoke/thr_gpu.csv`
 - `bench/smoke/thr_cpu.csv`
 
+Generate a Markdown summary from raw benchmark CSV files:
+
+```bash
+python scripts/summarize_benchmarks.py bench/smoke/thr_gpu.csv bench/smoke/thr_cpu.csv -o bench/smoke/summary.md
+```
+
+The summary generator validates required raw columns and groups by device, cipher, operation, block size, and `timing_scope`. It reports count, min, mean, median, and max for `time_ms` and `GiB/s`, preserving kernel-only GPU rows separately from CPU baseline rows.
+
 ## Build Verification
 
 The intended manual build flow in `README.md` is:
