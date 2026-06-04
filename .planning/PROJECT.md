@@ -21,12 +21,12 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 - Benchmark artifacts are written under `bench/`.
 - Optional profiling support exists through NVTX and Nsight-related CMake targets.
 - A codebase map exists under `.planning/codebase/`.
+- Phase 1 validated portable CMake configuration and build-focused README guidance.
+- Phase 2 added deterministic known-answer tests for ECB, CTR, and GCM, plus GCM tag/authentication fixes at source level.
+- Phase 3 added reproducible benchmark metadata capture, stable raw CSV output, summary generation, methodology documentation, and CUDA event cleanup at source level.
 
 ### Active
 
-- [ ] Make the repository portable enough for open-source users to build without local absolute paths.
-- [ ] Add deterministic AES correctness verification against known test vectors.
-- [ ] Define a reproducible benchmark methodology with environment capture, raw outputs, and summary tables.
 - [ ] Plan and implement benchmark coverage beyond ECB/CTR/GCM for standard AES modes.
 - [ ] Rewrite the README as a high-trust landing page for CUDA/GPU developers.
 - [ ] Add open-source governance files: license, contributing guide, security policy, citation metadata, and issue templates.
@@ -44,9 +44,9 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 
 ## Context
 
-The repository is brownfield CUDA/C++ code. Current code is useful but not yet ready for public prestige: build files contain absolute Windows paths, generated build artifacts exist locally, there is no formal test framework, and GCM/correctness semantics need stronger validation before public claims.
+The repository is brownfield CUDA/C++ code. Current code is useful but not yet ready for public prestige: Phase 1-3 have improved build portability, correctness checks, and benchmark reproducibility, but public-facing documentation, governance files, mode matrix coverage, and release workflow still need work.
 
-A main-branch code review on 2026-06-04 found three high-severity AES-GCM blockers: decrypt accepts unauthenticated ciphertext, IV broadcast uses warp-local `__shfl_sync` incorrectly for a 256-thread block, and tag generation is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR. It also confirmed the public build is blocked by CUDA host compiler discovery and maintainer-local CMake paths.
+A main-branch code review on 2026-06-04 found three high-severity AES-GCM blockers: decrypt accepts unauthenticated ciphertext, IV broadcast uses warp-local `__shfl_sync` incorrectly for a 256-thread block, and tag generation is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR. Phase 2 fixed these at source level for the supported 96-bit-IV, empty-AAD, full-block GCM scope. Runtime CMake/CTest verification still needs a shell where `nvcc` can find `cl.exe`.
 
 The desired positioning is:
 
@@ -77,9 +77,9 @@ Current external best-practice signals:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Position as a reproducible benchmark suite | The existing code is benchmark-oriented and this is the strongest credible public identity. | Pending |
-| Target CUDA/GPU developers first | This audience judges by buildability, methodology, correctness, and results. | Pending |
-| Use reproducible benchmark standard | Prestige depends on trust, not only peak throughput numbers. | Pending |
+| Position as a reproducible benchmark suite | The existing code is benchmark-oriented and this is the strongest credible public identity. | Active |
+| Target CUDA/GPU developers first | This audience judges by buildability, methodology, correctness, and results. | Active |
+| Use reproducible benchmark standard | Prestige depends on trust, not only peak throughput numbers. | Active |
 | Treat library/API use as out of scope for v1 | Avoid implying production cryptographic safety before tests and API hardening exist. | Pending |
 | Build SEO through documentation quality | Search engines and developers both reward clear, useful, crawlable content. | Pending |
 | Plan full AES mode coverage | The prestige target is stronger if the roadmap covers all important AES modes, not only current ECB/CTR/GCM code. | Pending |
@@ -103,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state.
 
 ---
-*Last updated: 2026-06-04 after initialization*
+*Last updated: 2026-06-04 after Phase 3 completion*

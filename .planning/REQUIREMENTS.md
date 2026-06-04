@@ -33,12 +33,12 @@
 
 ### Benchmark Reproducibility
 
-- [ ] **BENCH-01**: Developer can run one documented benchmark command that records GPU, driver, CUDA Toolkit, OS, compiler, build type, clocks/persistence note, mode, size, and run count.
-- [ ] **BENCH-02**: Developer can distinguish kernel-only throughput from end-to-end throughput.
-- [ ] **BENCH-03**: Developer can save raw benchmark output in machine-readable CSV or JSON.
-- [ ] **BENCH-04**: Developer can generate summary tables from raw output.
-- [ ] **BENCH-05**: Reader can inspect benchmark methodology and limitations before reading claims.
-- [ ] **BENCH-06**: Benchmark runs release CUDA event resources and do not leak timing resources across long runs.
+- [x] **BENCH-01**: Developer can run one documented benchmark command that records GPU, driver, CUDA Toolkit, OS, compiler, build type, clocks/persistence note, mode, size, and run count.
+- [x] **BENCH-02**: Developer can distinguish kernel-only throughput from end-to-end throughput.
+- [x] **BENCH-03**: Developer can save raw benchmark output in machine-readable CSV or JSON.
+- [x] **BENCH-04**: Developer can generate summary tables from raw output.
+- [x] **BENCH-05**: Reader can inspect benchmark methodology and limitations before reading claims.
+- [x] **BENCH-06**: Benchmark runs release CUDA event resources and do not leak timing resources across long runs.
 
 ### AES Mode Coverage
 
@@ -114,12 +114,12 @@
 | TEST-06 | Phase 2 | Complete |
 | TEST-07 | Phase 2 | Complete |
 | TEST-08 | Phase 2 | Complete |
-| BENCH-01 | Phase 3 | Pending |
-| BENCH-02 | Phase 3 | Pending |
-| BENCH-03 | Phase 3 | Pending |
-| BENCH-04 | Phase 3 | Pending |
-| BENCH-05 | Phase 3 | Pending |
-| BENCH-06 | Phase 3 | Pending |
+| BENCH-01 | Phase 3 | Complete |
+| BENCH-02 | Phase 3 | Complete |
+| BENCH-03 | Phase 3 | Complete |
+| BENCH-04 | Phase 3 | Complete |
+| BENCH-05 | Phase 3 | Complete |
+| BENCH-06 | Phase 3 | Complete |
 | MODE-01 | Phase 4 | Pending |
 | REPO-02 | Phase 4 | Pending |
 | REPO-03 | Phase 4 | Pending |
