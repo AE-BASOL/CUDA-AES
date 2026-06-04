@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-last_updated: "2026-06-04T03:26:00+03:00"
+status: ready_to_execute
+last_updated: "2026-06-04T03:24:00+03:00"
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 3
+  total_plans: 6
   completed_plans: 3
-  percent: 13
+  percent: 50
 ---
 
 # Project State
@@ -51,6 +51,23 @@ Phase 1: Repository And Build Foundation
 - Main branch review imported: `.planning/reviews/2026-06-04-main-branch-code-review.md`
 - Phase 1 planned: `.planning/phases/01-repository-and-build-foundation/`
 - Phase 1 executed: portable CMake, repository hygiene, and build-focused README are complete.
+- Phase 2 planned: `.planning/phases/02-correctness-baseline/`
+
+## Current Phase
+
+Phase 2: Correctness Baseline
+
+**Goal:** Prove AES outputs before publishing benchmark claims and close the GCM review blockers.
+
+**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08
+**Planning status:** Ready to execute
+**Plans:** 3 plans in 3 waves
+
+| Plan | Wave | Focus |
+|------|------|-------|
+| `02-01` | 1 | Deterministic KAT/smoke harness for ECB, CTR, and GCM |
+| `02-02` | 2 | Standard GCM tag, IV/J0 broadcast, and authentication failure semantics |
+| `02-03` | 3 | Correctness command/status documentation |
 
 ## Review-Derived Blockers
 
@@ -60,7 +77,7 @@ Phase 1: Repository And Build Foundation
 
 ## Next Command
 
-`$gsd-plan-phase 2`
+`$gsd-execute-phase 2`
 
 ## Scope Note
 

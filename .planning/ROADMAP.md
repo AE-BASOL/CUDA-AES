@@ -58,6 +58,16 @@
 6. GCM IV/counter state is broadcast correctly across all warps in a 256-thread block.
 7. GCM tag generation matches standard AES-GCM, including length block and final `E(K, J0)` XOR.
 
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `02-01` | 1 | Deterministic KAT/smoke harness for ECB, CTR, and GCM across AES-128/AES-256 |
+| `02-02` | 2 | Standard AES-GCM tag generation, block-wide IV/J0 state, and tag verification semantics |
+| `02-03` | 3 | README/CMake/testing documentation exposing correctness commands and verified scope |
+
+**Wave 2 blocked on Wave 1 completion. Wave 3 blocked on Wave 2 completion.**
+
 ## Phase 3: Reproducible Benchmark Harness
 
 **Goal:** Make benchmark runs repeatable, inspectable, resource-clean, and summarizable.
