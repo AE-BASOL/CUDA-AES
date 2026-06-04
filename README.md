@@ -106,6 +106,30 @@ Example output:
 
 Use repeated runs, fixed GPU clocks, persistence mode notes, and a quiet system when comparing throughput numbers. Treat kernel-only and end-to-end timings as different metrics; this phase labels the current GPU metric as kernel-only.
 
+## Benchmark Methodology
+
+Benchmark results are only meaningful after the CTest known-answer checks pass. The benchmark runner still performs embedded round-trip checks, but the deterministic KAT suite is the correctness gate for interpreting throughput.
+
+The current GPU timing scope is `kernel_only`: CUDA events are recorded around the kernel launch and synchronization. Allocation, host-to-device copy, device-to-host copy, output validation, and summary generation are outside this timed region. End-to-end throughput is not currently emitted as a benchmark row; do not compare `kernel_only` rows against future `end_to_end` rows without keeping the timing scope separate.
+
+The CPU baseline uses OpenSSL EVP and is recorded separately with `timing_scope=cpu_baseline`. It is a comparison point, not a tuned CPU benchmark: CPU affinity, turbo behavior, OpenSSL build flags, and system load can affect it.
+
+Recommended methodology for publishable runs:
+
+1. Build in Release mode and record the exact CMake command.
+2. Run `ctest --test-dir build --output-on-failure`.
+3. Use an explicit benchmark command with `--runs`, `--sizes`, and `--bench-dir`.
+4. Record GPU clocks, persistence mode, driver, CUDA Toolkit, OS, compiler, GPU model, and command line. `run_metadata.csv` captures what the executable can query; clocks and persistence mode remain a manual note.
+5. Run on a quiet system and repeat enough runs for stable median throughput.
+6. Publish raw CSV files and generated `summary.md` together. Treat summary tables as derived output, not the source of truth.
+
+Known limitations:
+
+- GCM correctness coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
+- Partial-block behavior and non-empty AAD are not benchmarked in v1.
+- The GPU result is kernel-only timing, not full application throughput.
+- CPU baseline rows are not a controlled CPU performance study.
+
 ## Optional Tooling
 
 Generate a PTX dump for `aes128_ecb.cu`:
