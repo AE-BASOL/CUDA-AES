@@ -434,6 +434,18 @@ int main(int argc, char** argv) {
 
             CHECK_CUDA(cudaMemcpy(h_rt_decrypted_gpu, d_rt_decrypted_final, bytes, cudaMemcpyDeviceToHost));
 
+            bool tag_match = true;
+            if (isGcm) {
+                uint8_t h_tag_encrypt[16];
+                uint8_t h_tag_decrypt[16];
+                CHECK_CUDA(cudaMemcpy(h_tag_encrypt, d_rt_tag_encrypt, sizeof(h_tag_encrypt), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(h_tag_decrypt, d_rt_tag_decrypt_out, sizeof(h_tag_decrypt), cudaMemcpyDeviceToHost));
+                tag_match = (std::memcmp(h_tag_encrypt, h_tag_decrypt, sizeof(h_tag_encrypt)) == 0);
+                if (!tag_match) {
+                    printf("FAIL - GCM authentication tag mismatch\n");
+                }
+            }
+
             bool match = true;
             for (size_t i = 0; i < bytes; ++i) {
                 if (h_rt_original[i] != h_rt_decrypted_gpu[i]) {
@@ -447,10 +459,7 @@ int main(int argc, char** argv) {
                     break;
                 }
             }
-            if (match) {
-                // For GCM, an additional check could be to compare d_rt_tag_encrypt and d_rt_tag_decrypt_out
-                // if the decrypt kernel is expected to place the calculated tag there.
-                // However, a matching plaintext is the primary success indicator for round-trip.
+            if (match && tag_match) {
                 printf("  Result:           PASS\n");
             } else {
                 printf("  Result:           FAIL\n"); // Ensure FAIL is also followed by a newline and indented

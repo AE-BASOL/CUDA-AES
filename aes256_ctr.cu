@@ -88,6 +88,21 @@ __device__ __forceinline__ uint4 aes256_ctr_generate_keystream(uint64_t ctr_lo,
     return make_uint4(k0, k1, k2, k3);
 }
 
+static __device__ __forceinline__ uint32_t bswap32_dev(uint32_t x) {
+    return ((x & 0x000000FFu) << 24) |
+           ((x & 0x0000FF00u) << 8) |
+           ((x & 0x00FF0000u) >> 8) |
+           ((x & 0xFF000000u) >> 24);
+}
+
+static __device__ __forceinline__ uint64_t ctr_hi_inc32(uint64_t ctr_hi, size_t blockIndex) {
+    const uint32_t nonce_hi = static_cast<uint32_t>(ctr_hi);
+    const uint32_t counter_word = static_cast<uint32_t>(ctr_hi >> 32);
+    const uint32_t counter_be = bswap32_dev(counter_word);
+    const uint32_t next_counter_word = bswap32_dev(counter_be + static_cast<uint32_t>(blockIndex));
+    return static_cast<uint64_t>(nonce_hi) | (static_cast<uint64_t>(next_counter_word) << 32);
+}
+
 __global__ void aes256_ctr_encrypt(const uint8_t *in, uint8_t *out,
                                    size_t nBlocks, uint64_t ctrLo, uint64_t ctrHi) {
     const size_t threadId = blockIdx.x * blockDim.x + threadIdx.x;
@@ -109,9 +124,8 @@ __global__ void aes256_ctr_encrypt(const uint8_t *in, uint8_t *out,
     uint4 *out4 = reinterpret_cast<uint4*>(out);
 
     for (size_t blockIndex = threadId; blockIndex < nBlocks; blockIndex += stride) {
-        const uint64_t ctr_lo = ctrLo + blockIndex;
-        const uint64_t carry = (ctr_lo < blockIndex || ctr_lo < ctrLo) ? 1ULL : 0ULL;
-        const uint64_t ctr_hi = ctrHi + carry;
+        const uint64_t ctr_lo = ctrLo;
+        const uint64_t ctr_hi = ctr_hi_inc32(ctrHi, blockIndex);
 
         uint4 keystream = aes256_ctr_generate_keystream(ctr_lo, ctr_hi, rk,
                                                         sh_T0, sh_T1, sh_T2, sh_T3, sh_sbox);
@@ -149,9 +163,8 @@ __global__ void aes256_ctr_decrypt(const uint8_t *in, uint8_t *out,
     uint4 *out4 = reinterpret_cast<uint4*>(out);
 
     for (size_t blockIndex = threadId; blockIndex < nBlocks; blockIndex += stride) {
-        const uint64_t ctr_lo = ctrLo + blockIndex;
-        const uint64_t carry = (ctr_lo < blockIndex || ctr_lo < ctrLo) ? 1ULL : 0ULL;
-        const uint64_t ctr_hi = ctrHi + carry;
+        const uint64_t ctr_lo = ctrLo;
+        const uint64_t ctr_hi = ctr_hi_inc32(ctrHi, blockIndex);
 
         uint4 keystream = aes256_ctr_generate_keystream(ctr_lo, ctr_hi, rk,
                                                         sh_T0, sh_T1, sh_T2, sh_T3, sh_sbox);

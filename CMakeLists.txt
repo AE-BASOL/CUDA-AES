@@ -21,7 +21,7 @@ endif()
 set(CUDA_PTX_ARCH "sm_86" CACHE STRING "CUDA architecture used by the ptx-dump helper target")
 set(NSYS_EXECUTABLE "" CACHE FILEPATH "Optional path to the Nsight Systems executable")
 
-set(CUDA_SOURCES
+set(CUDA_KERNEL_SOURCES
     aes_tables.cu
     aes128_ctr.cu
     aes128_gcm.cu
@@ -29,48 +29,58 @@ set(CUDA_SOURCES
     aes256_gcm.cu
     aes128_ecb.cu
     aes256_ecb.cu
+)
+
+set(CUDA_SOURCES
+    ${CUDA_KERNEL_SOURCES}
     main.cu
 )
 
 add_executable(CudaProject ${CUDA_SOURCES})
+add_executable(CudaAesKat ${CUDA_KERNEL_SOURCES} tests/kat_main.cu)
 
-set_target_properties(CudaProject PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
-)
-
-target_include_directories(CudaProject PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-target_compile_definitions(CudaProject PRIVATE ENABLE_NVTX)
-
-target_link_libraries(CudaProject PRIVATE
-    CUDA::cudart
-    OpenSSL::SSL
-    OpenSSL::Crypto
-)
-
-if(WIN32)
-    target_link_libraries(CudaProject PRIVATE
-        crypt32
-        ws2_32
-        user32
-        gdi32
-        advapi32
-        kernel32
+foreach(target_name IN ITEMS CudaProject CudaAesKat)
+    set_target_properties(${target_name} PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
     )
-endif()
 
-target_compile_options(CudaProject PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math -lineinfo --ptxas-options=-v -O3>
-    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/O2 /EHsc>
-    $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-O3>
-)
+    target_include_directories(${target_name} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 
-set_source_files_properties(${CUDA_SOURCES} PROPERTIES
+    target_compile_definitions(${target_name} PRIVATE ENABLE_NVTX)
+
+    target_link_libraries(${target_name} PRIVATE
+        CUDA::cudart
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+
+    if(WIN32)
+        target_link_libraries(${target_name} PRIVATE
+            crypt32
+            ws2_32
+            user32
+            gdi32
+            advapi32
+            kernel32
+        )
+    endif()
+
+    target_compile_options(${target_name} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math -lineinfo --ptxas-options=-v -O3>
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:MSVC>>:/O2 /EHsc>
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-O3>
+    )
+endforeach()
+
+set_source_files_properties(${CUDA_KERNEL_SOURCES} main.cu tests/kat_main.cu PROPERTIES
     CUDA_MAXIMUM_REGISTER_COUNT 64
 )
+
+enable_testing()
+add_test(NAME cuda_aes_kat COMMAND CudaAesKat)
 
 add_custom_target(ptx-dump
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bench

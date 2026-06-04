@@ -9,7 +9,7 @@ This repository is being prepared as an open-source GPU AES benchmark project. I
 - Canonical source lives in the top-level `.cu` and `.h` files built by the root `CMakeLists.txt`.
 - `v3/` is a local experimental variant and is not the canonical Phase 1 build target.
 - `cihangirTezcanAESimplementation/` is legacy/provenance code.
-- GCM correctness and authentication are scheduled for Phase 2. Until NIST/OpenSSL known-answer tests pass, do not treat the current GCM output as standards-compliant AES-GCM.
+- Phase 2 adds known-answer checks for ECB, CTR, and GCM. GCM coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
 
 ## Prerequisites
 
@@ -37,6 +37,22 @@ cmake --build build --config Release
 ```
 
 For multi-config generators such as Visual Studio, `--config Release` selects the Release configuration at build time.
+
+## Correctness
+
+Run the small known-answer tests before interpreting benchmark output:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+The CTest suite runs the `CudaAesKat` executable. It uses deterministic vectors for:
+
+- ECB-128 and ECB-256
+- CTR-128 and CTR-256
+- GCM-128 and GCM-256
+
+The GCM checks cover the Phase 2 supported shape: 96-bit IV, empty AAD, full 16-byte blocks, ciphertext/tag match, wrong-tag rejection, and tampered-ciphertext rejection. This project is still a benchmark/research repository, not production cryptography software.
 
 ## Run
 

@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-04T00:42:31.328Z",
+  "phase": "02",
+  "phase_name": "correctness-baseline",
+  "phase_dir": ".planning/phases/02-correctness-baseline",
+  "plan": 3,
+  "task": 3,
+  "total_tasks": 3,
+  "status": "paused_after_source_level_completion",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "02-01 KAT/smoke harness and CTest wiring",
+      "status": "done",
+      "progress": "CudaAesKat target, CTest registration, and tests/kat_main.cu were added."
+    },
+    {
+      "id": 2,
+      "name": "02-02 GCM correctness and authentication fixes",
+      "status": "done",
+      "progress": "GCM tag generation, IV shared state, CTR inc32, and main.cu tag_match logic were implemented."
+    },
+    {
+      "id": 3,
+      "name": "02-03 Correctness documentation",
+      "status": "done",
+      "progress": "README and .planning/codebase/TESTING.md now document CTest/KAT coverage and GCM scope."
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 4,
+      "name": "Resume sanity check",
+      "status": "not_started",
+      "progress": "Review the WIP commit, run static checks, and run CMake/CTest from a Visual Studio Developer Command Prompt if available."
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Runtime CMake/CTest verification could not run because nvcc cannot find cl.exe in PATH.",
+      "type": "human_action",
+      "workaround": "Run from a Visual Studio Developer Command Prompt or pass -DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>."
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Run CMake build and CTest in a CUDA/MSVC-ready shell.",
+      "context": "Source-level Phase 2 checks are complete, but runtime KAT execution was environment-limited.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Use a separate CudaAesKat executable instead of adding --kat to CudaProject.",
+      "rationale": "Keeps benchmark behavior isolated from correctness tests.",
+      "phase": "02"
+    },
+    {
+      "decision": "Limit Phase 2 GCM correctness scope to 96-bit IV, empty AAD, and full 16-byte blocks.",
+      "rationale": "Closes the current benchmark correctness blocker without claiming a full production AEAD API.",
+      "phase": "02"
+    },
+    {
+      "decision": "Treat missing cl.exe as an environment limitation, not a source-level failure.",
+      "rationale": "CMake now prints host compiler guidance before CUDA compiler identification fails.",
+      "phase": "02"
+    }
+  ],
+  "uncommitted_files": [
+    ".planning/REQUIREMENTS.md",
+    ".planning/STATE.md",
+    ".planning/codebase/TESTING.md",
+    ".planning/phases/02-correctness-baseline/02-01-SUMMARY.md",
+    ".planning/phases/02-correctness-baseline/02-02-SUMMARY.md",
+    ".planning/phases/02-correctness-baseline/02-03-SUMMARY.md",
+    ".planning/phases/02-correctness-baseline/02-VERIFICATION.md",
+    "CMakeLists.txt",
+    "README.md",
+    "aes128_ctr.cu",
+    "aes128_gcm.cu",
+    "aes256_ctr.cu",
+    "aes256_gcm.cu",
+    "main.cu",
+    "tests/kat_main.cu"
+  ],
+  "next_action": "Run git show --stat HEAD, then run rg static checks from 02-VERIFICATION.md; if in a Visual Studio Developer Command Prompt, run cmake/build/ctest.",
+  "context_notes": "The user paused after Phase 2 source-level execution. A WIP commit should preserve all source, docs, summary, verification, and handoff artifacts. Resume should not redo Phase 2 from scratch."
+}

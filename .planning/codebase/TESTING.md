@@ -8,14 +8,35 @@ focus: quality
 
 ## Summary
 
-There is no formal test framework in the repository. Correctness checks are embedded in the benchmark executable in `main.cu`, and performance measurements are emitted to console and CSV files. The local `cmake-build-debug/Testing/` directory is generated CMake state, not source-level tests.
+The repository now has a small CTest-registered known-answer-test executable for correctness, plus the older benchmark-embedded round-trip checks in `main.cu`. Performance measurements are emitted to console and CSV files. Generated CMake `Testing/` directories are local build state, not source-level tests.
 
 ## Test Frameworks
 
-- No unit test framework was found.
-- No CTest test definitions were found in the source CMake files.
+- CTest is enabled in the root `CMakeLists.txt`.
+- `CudaAesKat` is registered as the `cuda_aes_kat` test.
 - No CI workflow files were found in the mapped source listing.
-- No known-answer-test fixture files were found.
+- Known-answer vectors live in `tests/kat_main.cu`.
+
+## Known-Answer Test Coverage
+
+`tests/kat_main.cu` covers:
+
+- ECB-128 encrypt/decrypt
+- ECB-256 encrypt/decrypt
+- CTR-128 encrypt/decrypt
+- CTR-256 encrypt/decrypt
+- GCM-128 ciphertext/tag/decrypt tag
+- GCM-256 ciphertext/tag/decrypt tag
+- GCM wrong-tag rejection
+- GCM tampered-ciphertext rejection
+
+Run it with:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+The GCM correctness scope is 96-bit IV, empty AAD, and full 16-byte blocks. Broader AEAD API coverage, partial-block behavior, and non-empty AAD are future work.
 
 ## Embedded Correctness Checks
 
@@ -68,11 +89,8 @@ The current CMake files are Windows/MSVC-oriented, while the README uses Linux-s
 
 ## Test Gaps
 
-- No automated known-answer tests for AES ECB, CTR, or GCM.
-- No tests for partial block handling; benchmark sizes are block-aligned.
-- No tag verification test harness for GCM.
-- No AAD coverage for GCM.
-- No negative tests for wrong GCM tags.
+- No tests for partial block handling; benchmark sizes and Phase 2 KATs are block-aligned.
+- No non-empty AAD coverage for GCM.
 - No memory checker or sanitizer configuration.
 - No CI build matrix across CUDA versions, host compilers, or GPU architectures.
 - No tests covering the legacy `cihangirTezcanAESimplementation/` executable.
@@ -87,4 +105,3 @@ Useful manual checks before changing kernels:
 - Run the default benchmark on a smaller size set before expensive 1 GiB runs.
 - Run with `--decrypt` to exercise decrypt paths.
 - Compare GPU ciphertext for small fixed inputs against OpenSSL outputs in a future automated test.
-

@@ -22,14 +22,14 @@
 
 ### Correctness
 
-- [ ] **TEST-01**: Developer can run deterministic AES-128 and AES-256 ECB known-answer tests.
-- [ ] **TEST-02**: Developer can run deterministic AES-128 and AES-256 CTR known-answer tests.
-- [ ] **TEST-03**: Developer can run deterministic AES-128 and AES-256 GCM known-answer tests, including tag behavior.
-- [ ] **TEST-04**: Developer can run a small smoke test without allocating 1 GiB buffers.
-- [ ] **TEST-05**: Maintainer can see correctness status before trusting benchmark output.
-- [ ] **TEST-06**: GCM decrypt rejects unauthenticated ciphertext before plaintext is accepted as valid.
-- [ ] **TEST-07**: GCM IV/counter initialization is correct for all threads in a multi-warp block.
-- [ ] **TEST-08**: GCM tag generation matches standard AES-GCM including length block and final `E(K, J0)` XOR.
+- [x] **TEST-01**: Developer can run deterministic AES-128 and AES-256 ECB known-answer tests.
+- [x] **TEST-02**: Developer can run deterministic AES-128 and AES-256 CTR known-answer tests.
+- [x] **TEST-03**: Developer can run deterministic AES-128 and AES-256 GCM known-answer tests, including tag behavior.
+- [x] **TEST-04**: Developer can run a small smoke test without allocating 1 GiB buffers.
+- [x] **TEST-05**: Maintainer can see correctness status before trusting benchmark output.
+- [x] **TEST-06**: GCM decrypt rejects unauthenticated ciphertext before plaintext is accepted as valid.
+- [x] **TEST-07**: GCM IV/counter initialization is correct for all threads in a multi-warp block.
+- [x] **TEST-08**: GCM tag generation matches standard AES-GCM including length block and final `E(K, J0)` XOR.
 
 ### Benchmark Reproducibility
 
@@ -106,14 +106,14 @@
 | BUILD-03 | Phase 1 | Complete |
 | BUILD-04 | Phase 1 | Complete |
 | BUILD-05 | Phase 1 | Complete |
-| TEST-01 | Phase 2 | Pending |
-| TEST-02 | Phase 2 | Pending |
-| TEST-03 | Phase 2 | Pending |
-| TEST-04 | Phase 2 | Pending |
-| TEST-05 | Phase 2 | Pending |
-| TEST-06 | Phase 2 | Pending |
-| TEST-07 | Phase 2 | Pending |
-| TEST-08 | Phase 2 | Pending |
+| TEST-01 | Phase 2 | Complete |
+| TEST-02 | Phase 2 | Complete |
+| TEST-03 | Phase 2 | Complete |
+| TEST-04 | Phase 2 | Complete |
+| TEST-05 | Phase 2 | Complete |
+| TEST-06 | Phase 2 | Complete |
+| TEST-07 | Phase 2 | Complete |
+| TEST-08 | Phase 2 | Complete |
 | BENCH-01 | Phase 3 | Pending |
 | BENCH-02 | Phase 3 | Pending |
 | BENCH-03 | Phase 3 | Pending |
