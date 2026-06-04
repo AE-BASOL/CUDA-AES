@@ -82,6 +82,16 @@
 5. Methodology documentation explains limitations, warmup, repetitions, clocks, and CPU baseline.
 6. CUDA timing events are destroyed or wrapped in RAII so long runs do not leak event resources.
 
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `03-01` | 1 | Benchmark run metadata, stable raw output fields, timing scope labels, configurable smoke parameters, and CUDA event cleanup |
+| `03-02` | 2 | Summary generation from raw benchmark output |
+| `03-03` | 3 | Benchmark methodology documentation and Phase 3 verification evidence |
+
+**Wave 2 blocked on Wave 1 completion. Wave 3 blocked on Wave 2 completion.**
+
 ## Phase 4: Open-Source Documentation Package
 
 **Goal:** Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix.

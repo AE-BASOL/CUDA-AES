@@ -14,7 +14,7 @@ Before planning or editing, read:
 
 ## Current Priority
 
-Phase 1 is the active phase: make the repository clean, portable, and buildable by an outside developer.
+Phase 3 is the active phase: make benchmark runs repeatable, inspectable, resource-clean, and summarizable.
 
 Do not prioritize SEO copy, benchmark claims, or release polish before build reproducibility and correctness are trustworthy.
 
