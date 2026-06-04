@@ -50,6 +50,7 @@ out/
 test_output/
 kat_output/
 results/
+bench/
 
 # === Backup and generated ===
 *~

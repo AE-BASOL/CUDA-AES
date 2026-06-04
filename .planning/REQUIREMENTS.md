@@ -7,18 +7,18 @@
 
 ### Repository Foundation
 
-- [ ] **REPO-01**: Developer can clone the repository without generated build artifacts or IDE metadata being treated as source.
+- [x] **REPO-01**: Developer can clone the repository without generated build artifacts or IDE metadata being treated as source.
 - [ ] **REPO-02**: Developer can understand the project positioning from the first screen of `README.md`.
 - [ ] **REPO-03**: Developer can see license, contribution, security, citation, changelog, issue, and pull request policies.
 - [ ] **REPO-04**: Maintainer can publish versioned releases with clear release notes.
 
 ### Build Portability
 
-- [ ] **BUILD-01**: Developer can configure the project without editing local absolute paths.
-- [ ] **BUILD-02**: Developer can select CUDA architecture through CMake configuration.
-- [ ] **BUILD-03**: Developer can build the benchmark target from documented commands.
-- [ ] **BUILD-04**: Developer can identify required CUDA, compiler, OpenSSL, and platform prerequisites.
-- [ ] **BUILD-05**: Developer can configure or diagnose the CUDA host compiler requirement without editing source files.
+- [x] **BUILD-01**: Developer can configure the project without editing local absolute paths.
+- [x] **BUILD-02**: Developer can select CUDA architecture through CMake configuration.
+- [x] **BUILD-03**: Developer can build the benchmark target from documented commands.
+- [x] **BUILD-04**: Developer can identify required CUDA, compiler, OpenSSL, and platform prerequisites.
+- [x] **BUILD-05**: Developer can configure or diagnose the CUDA host compiler requirement without editing source files.
 
 ### Correctness
 
@@ -100,12 +100,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REPO-01 | Phase 1 | Pending |
-| BUILD-01 | Phase 1 | Pending |
-| BUILD-02 | Phase 1 | Pending |
-| BUILD-03 | Phase 1 | Pending |
-| BUILD-04 | Phase 1 | Pending |
-| BUILD-05 | Phase 1 | Pending |
+| REPO-01 | Phase 1 | Complete |
+| BUILD-01 | Phase 1 | Complete |
+| BUILD-02 | Phase 1 | Complete |
+| BUILD-03 | Phase 1 | Complete |
+| BUILD-04 | Phase 1 | Complete |
+| BUILD-05 | Phase 1 | Complete |
 | TEST-01 | Phase 2 | Pending |
 | TEST-02 | Phase 2 | Pending |
 | TEST-03 | Phase 2 | Pending |

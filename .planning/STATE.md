@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-06-03T23:10:19.885Z"
+status: ready_to_plan
+last_updated: "2026-06-04T03:26:00+03:00"
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 3
+  percent: 13
 ---
 
 # Project State
@@ -19,20 +19,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-04)
 
 **Core value:** Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
-**Current focus:** Phase 1 - Repository And Build Foundation
+**Current focus:** Phase 2 - Correctness Baseline
 
 ## Current Roadmap
 
 See: `.planning/ROADMAP.md`
 
-## Current Phase
+## Last Completed Phase
 
 Phase 1: Repository And Build Foundation
 
 **Goal:** Make the repo clean, portable, and buildable by an outside developer.
 
 **Requirements:** REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05
-**Planning status:** Ready to execute
+**Status:** Complete 2026-06-04
 **Plans:** 3 plans in 2 waves
 
 | Plan | Wave | Focus |
@@ -50,6 +50,7 @@ Phase 1: Repository And Build Foundation
 - Roadmap created: `.planning/ROADMAP.md`
 - Main branch review imported: `.planning/reviews/2026-06-04-main-branch-code-review.md`
 - Phase 1 planned: `.planning/phases/01-repository-and-build-foundation/`
+- Phase 1 executed: portable CMake, repository hygiene, and build-focused README are complete.
 
 ## Review-Derived Blockers
 
@@ -59,7 +60,7 @@ Phase 1: Repository And Build Foundation
 
 ## Next Command
 
-`$gsd-execute-phase 1`
+`$gsd-plan-phase 2`
 
 ## Scope Note
 

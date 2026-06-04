@@ -21,6 +21,24 @@ focus: arch
 - `cmake-build-debug/` is a generated local build directory present in the workspace.
 - `.idea/` contains JetBrains CLion project metadata.
 
+## Canonical Source Boundary
+
+The canonical implementation for current development is the top-level source set built by the root `CMakeLists.txt`:
+
+- `main.cu`
+- `aes_common.h`
+- `aes_tables.cu`
+- `aes128_ecb.cu`, `aes256_ecb.cu`
+- `aes128_ctr.cu`, `aes256_ctr.cu`
+- `aes128_gcm.cu`, `aes256_gcm.cu`
+- `profiling_helpers.h`
+
+`v3/` is a local variant of the same benchmark family and is not the canonical build target for Phase 1 work. Future work should either promote a specific `v3/` change into the top-level implementation or document `v3/` as a separate experimental branch before depending on it.
+
+`cihangirTezcanAESimplementation/` is legacy/provenance code. Treat it as reference material unless a later phase explicitly scopes legacy modernization.
+
+Generated directories such as `cmake-build-debug/`, `.idea/`, and runtime `bench/` output are local-only artifacts, not source.
+
 ## Primary Source Files
 
 - `aes128_ecb.cu`: AES-128 ECB encrypt/decrypt kernels using register-local block state and per-thread striding.
@@ -83,4 +101,3 @@ This appears to be a forked local variant rather than a formal package or module
 - Shared constants use `d_` prefixes for device constants, such as `d_sbox` and `d_roundKeys`.
 - Host table copies use `h_` prefixes in `aes_tables.cu`, such as `h_sbox`.
 - Legacy code uses short typedefs `u8`, `u16`, `u32`, and `u64` in `cihangirTezcanAESimplementation/AES_final.h`.
-

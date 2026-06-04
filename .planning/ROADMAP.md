@@ -8,7 +8,7 @@
 
 | Phase | Name | Goal | Requirements |
 |-------|------|------|--------------|
-| 1 | Repository And Build Foundation | Make the repo clean, portable, and buildable by an outside developer. | REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05 |
+| 1 | Repository And Build Foundation | Complete 2026-06-04. Make the repo clean, portable, and buildable by an outside developer. | REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05 |
 | 2 | Correctness Baseline | Prove AES outputs before publishing benchmark claims and close the GCM review blockers. | TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08 |
 | 3 | Reproducible Benchmark Harness | Make benchmark runs repeatable, inspectable, resource-clean, and summarizable. | BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05, BENCH-06 |
 | 4 | Open-Source Documentation Package | Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix. | REPO-02, REPO-03, DOCS-01, DOCS-02, DOCS-03, DOCS-05, MODE-01 |
@@ -18,6 +18,8 @@
 | 8 | Release And Maintenance Loop | Publish a v1 release and define how the repo stays alive. | REPO-04, MAINT-01, MAINT-02, MAINT-03, MAINT-04 |
 
 ## Phase 1: Repository And Build Foundation
+
+**Status:** Complete 2026-06-04
 
 **Goal:** Make the repo clean, portable, and buildable by an outside developer.
 
