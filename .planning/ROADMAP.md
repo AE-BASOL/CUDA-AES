@@ -108,6 +108,16 @@
 5. Documentation includes a mode matrix for ECB, CBC, CFB, OFB, CTR, GCM/GMAC, CCM, XTS-AES, AES-KW, and AES-KWP.
 6. The legacy Tezcan code has clear provenance and license/status notes.
 
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `04-01` | 1 | README landing page and public docs hub for architecture, correctness, benchmark methodology, results, and profiling |
+| `04-02` | 2 | License, contributing, security, citation, changelog, issue templates, and PR template |
+| `04-03` | 3 | AES mode matrix, legacy Tezcan provenance documentation, and Phase 4 verification evidence |
+
+**Wave 2 blocked on Wave 1 completion. Wave 3 blocked on Wave 2 completion.**
+
 ## Phase 5: Confidentiality Mode Expansion
 
 **Goal:** Add the missing SP 800-38A confidentiality modes: CBC, CFB, and OFB.

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 3 complete at source level with runtime verification environment-limited by missing cl.exe; proceed to Phase 4 planning.
-last_updated: "2026-06-04T15:55:00+03:00"
+status: ready_to_execute
+stopped_at: Phase 4 planned with 3 execution plans, research, and validation strategy. Proceed to execute Phase 4.
+last_updated: "2026-06-04T15:37:00+03:00"
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 9
+  total_plans: 12
   completed_plans: 9
   percent: 38
 ---
@@ -56,7 +56,14 @@ Phase 4: Open-Source Documentation Package
 **Goal:** Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix.
 
 **Requirements:** REPO-02, REPO-03, DOCS-01, DOCS-02, DOCS-03, DOCS-05, MODE-01
-**Planning status:** Ready to plan
+**Planning status:** Ready to execute
+**Plans:** 3 plans in 3 waves
+
+| Plan | Wave | Focus |
+|------|------|-------|
+| `04-01` | 1 | README landing page and docs hub |
+| `04-02` | 2 | Governance, citation, issue, and PR templates |
+| `04-03` | 3 | Mode matrix, legacy provenance, and verification |
 
 ## Carried Verification Debt
 
@@ -70,9 +77,12 @@ Last session: 2026-06-04T15:55:00+03:00
 Stopped at: Phase 3 completed and committed; proceed to Phase 4 planning or run runtime verification from a CUDA/MSVC-ready shell.
 Resume file: None
 
+Last planning update: 2026-06-04T15:37:00+03:00
+Stopped at: Phase 4 planned with 3 execution plans, research, and validation strategy. Proceed to execute Phase 4.
+
 ## Next Command
 
-`$gsd-plan-phase 4`
+`$gsd-execute-phase 4`
 
 ## Scope Note
 

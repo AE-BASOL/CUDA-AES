@@ -14,7 +14,7 @@ Before planning or editing, read:
 
 ## Current Priority
 
-Phase 3 is the active phase: make benchmark runs repeatable, inspectable, resource-clean, and summarizable.
+Phase 4 is the active phase: turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix.
 
 Do not prioritize SEO copy, benchmark claims, or release polish before build reproducibility and correctness are trustworthy.
 
