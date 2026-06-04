@@ -10,6 +10,8 @@
 #include <immintrin.h>
 #include <openssl/evp.h>
 #include <iostream>
+#include <sstream>
+#include <iterator>
 #include "aes_common.h"
 #include "profiling_helpers.h"
 #include <iomanip> // For formatting output
@@ -29,9 +31,10 @@
 // Constants and parameters
 // -------------------------------
 constexpr int THREADS_PER_BLOCK = 256;
-constexpr int NUM_RUNS          = 5;
-static const size_t SIZES[]     = {1ull<<20, 10ull<<20, 100ull<<20, 1ull<<30};
+constexpr int DEFAULT_NUM_RUNS  = 5;
+static const size_t DEFAULT_SIZES[] = {1ull<<20, 10ull<<20, 100ull<<20, 1ull<<30};
 static const char*  MODES[]     = {"ecb-128","ecb-256","ctr-128","ctr-256","gcm-128","gcm-256"};
+static const char*  BENCH_SCHEMA_VERSION = "phase3.v1";
 
 // -------------------------------
 // Print header helper
@@ -126,6 +129,172 @@ static void fill_random(uint8_t *buf, size_t n, std::mt19937_64 &rng) {
     for(size_t i=0;i<n;++i) buf[i] = static_cast<uint8_t>(rng() & 0xFF);
 }
 
+struct BenchmarkConfig {
+    int runs = DEFAULT_NUM_RUNS;
+    std::vector<size_t> sizes = std::vector<size_t>(std::begin(DEFAULT_SIZES), std::end(DEFAULT_SIZES));
+    std::string bench_dir = "bench";
+    std::string command_line;
+};
+
+static std::string join_command_line(int argc, char** argv) {
+    std::ostringstream out;
+    for (int i = 0; i < argc; ++i) {
+        if (i) out << ' ';
+        std::string arg = argv[i] ? argv[i] : "";
+        if (arg.find_first_of(" \t\"") != std::string::npos) {
+            out << '"';
+            for (char ch : arg) {
+                if (ch == '"') out << '\\';
+                out << ch;
+            }
+            out << '"';
+        } else {
+            out << arg;
+        }
+    }
+    return out.str();
+}
+
+static bool parse_size_list(const std::string& value, std::vector<size_t>& sizes) {
+    std::vector<size_t> parsed;
+    std::stringstream ss(value);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        if (token.empty()) return false;
+        char* end = nullptr;
+        unsigned long long raw = std::strtoull(token.c_str(), &end, 10);
+        if (end == token.c_str() || *end != '\0' || raw == 0) return false;
+        parsed.push_back(static_cast<size_t>(raw));
+    }
+    if (parsed.empty()) return false;
+    sizes = parsed;
+    return true;
+}
+
+static std::string csv_escape(const std::string& value) {
+    bool quote = value.find_first_of(",\"\n\r") != std::string::npos;
+    if (!quote) return value;
+    std::string escaped = "\"";
+    for (char ch : value) {
+        if (ch == '"') escaped += "\"\"";
+        else escaped += ch;
+    }
+    escaped += "\"";
+    return escaped;
+}
+
+static std::string benchmark_run_id() {
+    auto now = std::chrono::system_clock::now();
+    auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    return std::to_string(epoch_ms);
+}
+
+static void write_metadata_row(std::ofstream& out, const std::string& key, const std::string& value) {
+    out << csv_escape(key) << ',' << csv_escape(value) << '\n';
+}
+
+static void write_benchmark_metadata(const BenchmarkConfig& config, const std::string& run_id) {
+    std::filesystem::create_directories(config.bench_dir);
+    std::ofstream out(std::filesystem::path(config.bench_dir) / "run_metadata.csv", std::ios::out | std::ios::trunc);
+    if (!out.is_open()) {
+        fprintf(stderr, "Error: Could not write benchmark metadata\n");
+        return;
+    }
+
+    out << "key,value\n";
+    write_metadata_row(out, "schema_version", BENCH_SCHEMA_VERSION);
+    write_metadata_row(out, "benchmark_run_id", run_id);
+    write_metadata_row(out, "command_line", config.command_line);
+    write_metadata_row(out, "run_count", std::to_string(config.runs));
+    write_metadata_row(out, "bench_dir", config.bench_dir);
+    std::ostringstream size_list;
+    for (size_t i = 0; i < config.sizes.size(); ++i) {
+        if (i) size_list << ';';
+        size_list << config.sizes[i];
+    }
+    write_metadata_row(out, "sizes_bytes", size_list.str());
+
+#ifdef _WIN32
+    write_metadata_row(out, "os", "windows");
+#elif defined(__linux__)
+    write_metadata_row(out, "os", "linux");
+#elif defined(__APPLE__)
+    write_metadata_row(out, "os", "macos");
+#else
+    write_metadata_row(out, "os", "unknown");
+#endif
+
+#ifdef _MSC_VER
+    write_metadata_row(out, "compiler", "msvc " + std::to_string(_MSC_VER));
+#elif defined(__GNUC__)
+    write_metadata_row(out, "compiler", "gcc " + std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__));
+#else
+    write_metadata_row(out, "compiler", "unknown");
+#endif
+    write_metadata_row(out, "build_type", "unknown");
+
+    int runtime_version = 0;
+    int driver_version = 0;
+    if (cudaRuntimeGetVersion(&runtime_version) == cudaSuccess) {
+        write_metadata_row(out, "cuda_runtime_version", std::to_string(runtime_version));
+    } else {
+        write_metadata_row(out, "cuda_runtime_version", "unknown");
+    }
+    if (cudaDriverGetVersion(&driver_version) == cudaSuccess) {
+        write_metadata_row(out, "cuda_driver_version", std::to_string(driver_version));
+    } else {
+        write_metadata_row(out, "cuda_driver_version", "unknown");
+    }
+
+    int device_count = 0;
+    if (cudaGetDeviceCount(&device_count) == cudaSuccess) {
+        write_metadata_row(out, "device_count", std::to_string(device_count));
+        for (int device = 0; device < device_count; ++device) {
+            cudaDeviceProp prop{};
+            if (cudaGetDeviceProperties(&prop, device) == cudaSuccess) {
+                std::string prefix = "device_" + std::to_string(device) + "_";
+                write_metadata_row(out, prefix + "name", prop.name);
+                write_metadata_row(out, prefix + "compute_capability", std::to_string(prop.major) + "." + std::to_string(prop.minor));
+                write_metadata_row(out, prefix + "global_mem_bytes", std::to_string(static_cast<unsigned long long>(prop.totalGlobalMem)));
+            }
+        }
+    } else {
+        write_metadata_row(out, "device_count", "unknown");
+    }
+    write_metadata_row(out, "clocks_persistence_note", "not captured; record fixed clocks and persistence mode manually when publishing results");
+}
+
+static void append_benchmark_row(const std::string& path,
+                                 const std::string& run_id,
+                                 const std::string& timing_scope,
+                                 const std::string& device,
+                                 const std::string& mode,
+                                 size_t bytes,
+                                 int run_index,
+                                 int run_count,
+                                 double ms,
+                                 double throughput,
+                                 const std::string& operation,
+                                 const std::string& command_line) {
+    std::ofstream csv(path, std::ios::app);
+    if (!csv.is_open()) {
+        fprintf(stderr, "Error: Could not write to %s\n", path.c_str());
+        return;
+    }
+    csv << BENCH_SCHEMA_VERSION << ','
+        << csv_escape(run_id) << ','
+        << csv_escape(timing_scope) << ','
+        << csv_escape(device) << ','
+        << csv_escape(mode) << ','
+        << bytes << ','
+        << run_index << ','
+        << run_count << ','
+        << std::fixed << std::setprecision(3) << ms << ','
+        << throughput << ','
+        << csv_escape(operation) << ','
+        << csv_escape(command_line) << '\n';
+}
+
 // -------------------------------
 // CTR preview routine
 // -------------------------------
@@ -186,7 +355,10 @@ static int gf_mult_bench() {
         cudaEventRecord(s);
         gf_mult_kernel<<<1,THREADS_PER_BLOCK>>>(d_out);
         cudaEventRecord(e); CHECK_CUDA(cudaEventSynchronize(e));
-        cudaEventElapsedTime(&ms_gpu,s,e); CHECK_CUDA(cudaFree(d_out));
+        cudaEventElapsedTime(&ms_gpu,s,e);
+        CHECK_CUDA(cudaEventDestroy(s));
+        CHECK_CUDA(cudaEventDestroy(e));
+        CHECK_CUDA(cudaFree(d_out));
         gbps_gpu = (1000000.0*THREADS_PER_BLOCK*128/1e9) / (ms_gpu/1000.0);
     }
 
@@ -278,6 +450,8 @@ void ensure_csv_header(const std::string& filename, const std::string& header) {
 int main(int argc, char** argv) {
     int blockOverride = THREADS_PER_BLOCK;
     bool decrypt=false, doCtrPreview=false, doGcmDebug=false, doGfMult=false;
+    BenchmarkConfig bench_config;
+    bench_config.command_line = join_command_line(argc, argv);
 
     // getopt_long related code will be commented out for Windows compatibility
     /*
@@ -317,10 +491,31 @@ int main(int argc, char** argv) {
             doGcmDebug = true;
         } else if (arg == "--gf-mult") {
             doGfMult = true;
+        } else if (arg == "--runs" && i + 1 < argc) {
+            bench_config.runs = std::atoi(argv[++i]);
+            if (bench_config.runs <= 0) {
+                fprintf(stderr, "Error: --runs must be a positive integer\n");
+                return EXIT_FAILURE;
+            }
+        } else if (arg == "--sizes" && i + 1 < argc) {
+            if (!parse_size_list(argv[++i], bench_config.sizes)) {
+                fprintf(stderr, "Error: --sizes expects comma-separated positive byte counts\n");
+                return EXIT_FAILURE;
+            }
+        } else if (arg == "--bench-dir" && i + 1 < argc) {
+            bench_config.bench_dir = argv[++i];
+            if (bench_config.bench_dir.empty()) {
+                fprintf(stderr, "Error: --bench-dir must not be empty\n");
+                return EXIT_FAILURE;
+            }
         } else if (arg == "--help" || arg == "-h") {
-            std::cout << "Usage: " << argv[0] << " [--decrypt] [--ctr-preview] [--gcm-debug] [--gf-mult]\n";
+            std::cout << "Usage: " << argv[0] << " [--decrypt] [--runs N] [--sizes bytes[,bytes]] [--bench-dir PATH] [--ctr-preview] [--gcm-debug] [--gf-mult]\n";
+            std::cout << "Benchmark rows are kernel_only timings. Run metadata is written to bench/run_metadata.csv by default.\n";
             std::cout << "Note: --block N is currently disabled due to getopt_long incompatibility on Windows.\n";
             return 0;
+        } else if (arg == "--runs" || arg == "--sizes" || arg == "--bench-dir") {
+            fprintf(stderr, "Error: %s requires a value\n", arg.c_str());
+            return EXIT_FAILURE;
         }
         // blockOverride is not parsed in this simplified version
     }
@@ -328,18 +523,22 @@ int main(int argc, char** argv) {
 
     // Ensure directory exists
     try {
-        std::filesystem::create_directories("bench");
+        std::filesystem::create_directories(bench_config.bench_dir);
     } catch (const std::filesystem::filesystem_error& e) {
         fprintf(stderr, "Filesystem error: %s\n", e.what());
     }
     init_T_tables();
 
     // [PYTHON_EXPORT] Define CSV headers
-    const std::string csv_header = "device,cipher,block_size,run_id,time_ms,GiB/s,operation";
+    const std::string csv_header = "schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,run_count,time_ms,GiB/s,operation,command_line";
+    const std::string run_id = benchmark_run_id();
+    const std::string gpu_csv_path = (std::filesystem::path(bench_config.bench_dir) / "thr_gpu.csv").string();
+    const std::string cpu_csv_path = (std::filesystem::path(bench_config.bench_dir) / "thr_cpu.csv").string();
 
     // Ensure CSV headers are correct
-    ensure_csv_header("bench/thr_gpu.csv", csv_header);
-    ensure_csv_header("bench/thr_cpu.csv", csv_header);
+    ensure_csv_header(gpu_csv_path, csv_header);
+    ensure_csv_header(cpu_csv_path, csv_header);
+    write_benchmark_metadata(bench_config, run_id);
 
     if(doCtrPreview) return ctr_preview();
     if(doGcmDebug)   return gcm_debug_run();
@@ -362,7 +561,7 @@ int main(int argc, char** argv) {
         init_roundKeys(rk.data(), (int)rk.size());
         std::vector<uint8_t> iv(12); if(!isEcb) fill_random(iv.data(),12,rng); // IV for CTR/GCM
 
-        for(size_t sz : SIZES){
+        for(size_t sz : bench_config.sizes){
             size_t nBlocks=(sz+15)/16; size_t bytes=nBlocks*16;
 
             printf("\n================ ROUND %zu ================\n", sz);
@@ -476,8 +675,8 @@ int main(int argc, char** argv) {
             if (d_rt_tag_decrypt_out) CHECK_CUDA(cudaFree(d_rt_tag_decrypt_out));
             // <<< END OF ROUND-TRIP CHECK >>>
 
-            // Original benchmarking loop for NUM_RUNS
-            for(int run=1; run<=NUM_RUNS; ++run){
+            // Original benchmarking loop for configured run count
+            for(int run=1; run<=bench_config.runs; ++run){
                 if(run == 1)                   // ➋ ilk RESULT_GPU/CPU’dan önce
                     print_header();
                 uint8_t *h_in,*h_out; CHECK_CUDA(cudaMallocHost(&h_in,bytes)); CHECK_CUDA(cudaMallocHost(&h_out,bytes));
@@ -517,15 +716,11 @@ int main(int argc, char** argv) {
                 NVTX_POP(); // Pop NVTX range for the entire iteration
 
                 float ms=0.0f; cudaEventElapsedTime(&ms,s,e);
+                CHECK_CUDA(cudaEventDestroy(s));
+                CHECK_CUDA(cudaEventDestroy(e));
                 double gib=(double)bytes/(double)(1ull<<30); double thr=gib/(ms/1000.0);
                 printf("RESULT_GPU %-10s %-12zu %-5d %-10.3f %-10.3f %-5s\n", mode.c_str(), bytes, run, ms, thr, decrypt?"DEC":"ENC");
-                std::ofstream gpu_csv("bench/thr_gpu.csv", std::ios::app);
-                if (gpu_csv.is_open()) {
-                    gpu_csv << "GPU," << mode << "," << bytes << "," << run << "," << std::fixed << std::setprecision(3) << ms << "," << thr << "," << (decrypt ? "DEC" : "ENC") << std::endl;
-                    gpu_csv.close();
-                } else {
-                    fprintf(stderr, "Error: Could not write to bench/thr_gpu.csv\n");
-                }
+                append_benchmark_row(gpu_csv_path, run_id, "kernel_only", "GPU", mode, bytes, run, bench_config.runs, ms, thr, decrypt ? "DEC" : "ENC", bench_config.command_line);
 
                 std::vector<uint8_t> host_in(bytes); CHECK_CUDA(cudaMemcpy(host_in.data(),d_in,bytes,cudaMemcpyDeviceToHost));
                 const EVP_CIPHER* (*sel)();
@@ -535,13 +730,7 @@ int main(int argc, char** argv) {
                 double cpu_thr = cpu_aes_throughput(host_in.data(), bytes, key.data(), bits, decrypt, sel);
                 double ms_cpu = (double)bytes/(cpu_thr*(1ull<<30))*1000.0;
                 printf("RESULT_CPU %-10s %-12zu %-5d %-10.3f %-10.3f %-5s\n", mode.c_str(), bytes, run, ms_cpu, cpu_thr, decrypt?"DEC":"ENC");
-                std::ofstream cpu_csv("bench/thr_cpu.csv", std::ios::app);
-                if (cpu_csv.is_open()) {
-                    cpu_csv << "CPU," << mode << "," << bytes << "," << run << "," << std::fixed << std::setprecision(3) << ms_cpu << "," << cpu_thr << "," << (decrypt ? "DEC" : "ENC") << std::endl;
-                    cpu_csv.close();
-                } else {
-                    fprintf(stderr, "Error: Could not write to bench/thr_cpu.csv\n");
-                }
+                append_benchmark_row(cpu_csv_path, run_id, "cpu_baseline", "CPU", mode, bytes, run, bench_config.runs, ms_cpu, cpu_thr, decrypt ? "DEC" : "ENC", bench_config.command_line);
 
                 CHECK_CUDA(cudaFreeHost(h_in)); CHECK_CUDA(cudaFreeHost(h_out));
                 CHECK_CUDA(cudaFree(d_in)); CHECK_CUDA(cudaFree(d_out)); if(d_tag) CHECK_CUDA(cudaFree(d_tag)); if(d_iv) CHECK_CUDA(cudaFree(d_iv));

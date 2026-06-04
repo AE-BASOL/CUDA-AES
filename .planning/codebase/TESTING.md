@@ -67,6 +67,10 @@ Top-level `main.cu` benchmarks:
 - Sizes: 1 MiB, 10 MiB, 100 MiB, and 1 GiB.
 - Runs: 5 per mode/size combination.
 - Operations: encryption by default, decryption when `--decrypt` is supplied.
+- Configurable smoke parameters: `--runs N`, `--sizes bytes[,bytes]`, and `--bench-dir PATH`.
+- Raw output schema version: `phase3.v1`.
+- GPU rows use `timing_scope=kernel_only`; CPU rows use `timing_scope=cpu_baseline`.
+- `run_metadata.csv` captures command line, run count, selected sizes, OS/compiler hints, CUDA runtime/driver versions, GPU model, compute capability, and clocks/persistence note.
 
 `v3/main.cu` benchmarks the same modes but uses 3 runs and omits the 1 GiB size.
 
@@ -75,6 +79,20 @@ Top-level `main.cu` benchmarks:
 - `cpu_aes_throughput()` in `main.cu` uses OpenSSL EVP as a CPU throughput baseline.
 - The benchmark writes GPU rows to `bench/thr_gpu.csv` and CPU rows to `bench/thr_cpu.csv`.
 - CPU and GPU outputs are not compared byte-for-byte in the CPU baseline function; CPU baseline is used for throughput comparison.
+
+## Reproducibility Smoke Command
+
+After building `CudaProject`, run a small benchmark without the 1 GiB allocation:
+
+```bash
+./build/CudaProject --runs 1 --sizes 1048576 --bench-dir bench/smoke
+```
+
+Expected raw artifacts:
+
+- `bench/smoke/run_metadata.csv`
+- `bench/smoke/thr_gpu.csv`
+- `bench/smoke/thr_cpu.csv`
 
 ## Build Verification
 

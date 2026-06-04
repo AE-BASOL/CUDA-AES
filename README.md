@@ -68,13 +68,35 @@ Windows:
 .\build\Release\CudaProject.exe
 ```
 
-The benchmark currently exercises ECB, CTR, and GCM-shaped paths for AES-128 and AES-256 across several message sizes. Example output:
+The benchmark currently exercises ECB, CTR, and GCM-shaped paths for AES-128 and AES-256 across several message sizes. Run correctness checks before interpreting benchmark output.
+
+For a small reproducibility smoke run:
+
+```bash
+./build/CudaProject --runs 1 --sizes 1048576 --bench-dir bench/smoke
+```
+
+Windows:
+
+```powershell
+.\build\Release\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\smoke
+```
+
+Benchmark artifacts are written under `bench/` by default, or under the directory supplied with `--bench-dir`:
+
+- `run_metadata.csv` records schema version, command line, run count, selected sizes, OS/compiler hints, CUDA runtime/driver versions, GPU name, compute capability, and a clocks/persistence note.
+- `thr_gpu.csv` records GPU rows with `timing_scope=kernel_only`; this is CUDA event timing around the kernel launch, not end-to-end application throughput.
+- `thr_cpu.csv` records OpenSSL CPU baseline rows with `timing_scope=cpu_baseline`.
+
+Raw result columns are stable for Phase 3: `schema_version`, `benchmark_run_id`, `timing_scope`, `device`, `cipher`, `block_size`, `run_index`, `run_count`, `time_ms`, `GiB/s`, `operation`, and `command_line`.
+
+Example output:
 
 ```text
 [RUN 3/5] [GPU] ctr-128 processed 100 MiB in 12.3 ms -> 7.9 GiB/s
 ```
 
-Use repeated runs, fixed GPU clocks, and a quiet system when comparing throughput numbers.
+Use repeated runs, fixed GPU clocks, persistence mode notes, and a quiet system when comparing throughput numbers. Treat kernel-only and end-to-end timings as different metrics; this phase labels the current GPU metric as kernel-only.
 
 ## Optional Tooling
 

@@ -31,7 +31,7 @@ The codebase is functional benchmark/experimentation code, but it has portabilit
 
 - CUDA resources are manually managed throughout `main.cu`.
 - There are paths where allocation succeeds and later operations can exit without centralized cleanup.
-- CUDA events in benchmark loops are created directly; lifecycle consistency should be reviewed if failures are introduced.
+- Phase 3 destroys CUDA events in the main benchmark loop and GF multiply benchmark; lifecycle consistency should still be reviewed if new timed paths are introduced.
 - Reinterpret casts to wider word types require alignment assumptions that are true for CUDA allocations but less explicit for arbitrary user buffers.
 - Pinned host memory allocations at 1 GiB can pressure host memory and may fail on smaller systems.
 
@@ -47,7 +47,7 @@ The codebase is functional benchmark/experimentation code, but it has portabilit
 
 - Benchmark results depend heavily on hard-coded architecture `86`.
 - CPU baseline uses OpenSSL but does not pin CPU frequency, affinity, or account for warmup beyond repeated runs.
-- GPU benchmark includes memory allocation/copy setup outside the timed event region for kernel timing, so results are kernel-throughput oriented rather than end-to-end throughput.
+- GPU benchmark includes memory allocation/copy setup outside the timed event region for kernel timing, so results are kernel-throughput oriented rather than end-to-end throughput. Phase 3 raw rows label this with `timing_scope=kernel_only`.
 - GCM tag generation has custom partial GHASH composition logic that warrants focused validation and profiling.
 - NVTX support is always enabled in CMake through `ENABLE_NVTX`, which may require headers/libraries depending on the CUDA Toolkit installation.
 
@@ -84,4 +84,4 @@ The 2026-06-04 main branch review in `.planning/reviews/2026-06-04-main-branch-c
 - GCM IV/counter broadcast uses warp-local `__shfl_sync`, which is incorrect for threads outside the first warp in a 256-thread block.
 - GCM tag output is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR.
 - Public CMake configuration is blocked by local absolute paths and CUDA host compiler detection problems.
-- Benchmark timing paths create CUDA events without destroying them.
+- Benchmark timing paths used to create CUDA events without destroying them; Phase 3 closes this in the main benchmark loop and GF multiply benchmark.
