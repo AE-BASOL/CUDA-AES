@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "CUDA-AES Benchmark"
+message: "If you use CUDA-AES Benchmark in research or benchmark comparisons, please cite the repository."
+type: software
+authors:
+  - name: "CUDA-AES Benchmark contributors"
+repository-code: "https://github.com/OWNER/CUDA-AES"
+abstract: "A reproducible CUDA/GPU AES benchmark suite with correctness checks, raw benchmark artifacts, and summary generation."
+keywords:
+  - CUDA
+  - GPU AES
+  - AES benchmark
+  - cryptography benchmark
+license: MIT
+preferred-citation:
+  type: software
+  title: "CUDA-AES Benchmark"
+  authors:
+    - name: "CUDA-AES Benchmark contributors"
+

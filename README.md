@@ -80,6 +80,14 @@ schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,
 - [Mode Matrix](docs/modes.md) - planned in Phase 4 final plan
 - [Legacy Tezcan Implementation](docs/legacy-tezcan.md) - planned in Phase 4 final plan
 
+## Contributing And Governance
+
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Citation metadata](CITATION.cff)
+- [Changelog](CHANGELOG.md)
+- [License](LICENSE)
+
 ## Methodology Summary
 
 Benchmark results are only meaningful after deterministic correctness tests pass. The GPU timing scope is currently `kernel_only`, which excludes allocation, host-to-device copy, device-to-host copy, output validation, and summary generation. Do not compare kernel-only rows against future end-to-end rows without preserving `timing_scope`.
@@ -113,4 +121,3 @@ The v1 roadmap focuses on:
 - Full practical AES mode coverage
 - Discoverability for CUDA AES and GPU AES benchmark searches
 - Versioned releases with reproducible raw benchmark artifacts
-
