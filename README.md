@@ -1,156 +1,116 @@
 # CUDA-AES Benchmark
 
-CUDA-AES is a CUDA benchmark and research repository for AES kernels on NVIDIA GPUs. The current canonical implementation benchmarks AES-128 and AES-256 in ECB, CTR, and GCM-shaped code paths, with OpenSSL used as the CPU comparison path.
+CUDA-AES Benchmark is a reproducible GPU AES benchmark suite for CUDA developers. It measures CUDA kernels for AES-128 and AES-256, compares them with an OpenSSL CPU baseline, records raw benchmark artifacts, and documents the correctness and methodology behind the numbers.
 
-This repository is being prepared as an open-source GPU AES benchmark project. It is not production cryptography software.
+This repository is benchmark and research software, not a production cryptography library.
 
-## Current Status
+## Current Coverage
 
-- Canonical source lives in the top-level `.cu` and `.h` files built by the root `CMakeLists.txt`.
-- `v3/` is a local experimental variant and is not the canonical Phase 1 build target.
-- `cihangirTezcanAESimplementation/` is legacy/provenance code.
-- Phase 2 adds known-answer checks for ECB, CTR, and GCM. GCM coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
+Implemented in the canonical top-level build:
 
-## Prerequisites
+| Mode | AES-128 | AES-256 | Correctness tests | Benchmark rows | Notes |
+|------|---------|---------|-------------------|----------------|-------|
+| ECB | Yes | Yes | Yes | Yes | NIST-style known-answer coverage |
+| CTR | Yes | Yes | Yes | Yes | 96-bit IV/counter helper in benchmark |
+| GCM | Yes | Yes | Yes | Yes | 96-bit IV, empty AAD, full blocks |
+
+Planned coverage includes CBC, CFB, OFB, CCM, XTS-AES, AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
+
+## Quick Start
+
+Prerequisites:
 
 - NVIDIA GPU with a CUDA-capable driver
-- CUDA Toolkit with `nvcc` available
+- CUDA Toolkit with `nvcc`
 - CMake 3.28 or newer
-- A CUDA-compatible host C++ compiler
+- CUDA-compatible host C++ compiler
 - OpenSSL development package discoverable by CMake
 
-On Windows, use a Visual Studio Developer Command Prompt or pass the host compiler explicitly with `-DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>`.
-
-If OpenSSL is installed in a custom location, pass `OPENSSL_ROOT_DIR`:
-
-```bash
-cmake -S . -B build -DOPENSSL_ROOT_DIR=/path/to/openssl
-```
-
-## Configure And Build
-
-Choose the CUDA architecture for your GPU. For example, `86` targets Ampere GPUs such as RTX 30-series cards.
+Configure and build:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86
 cmake --build build --config Release
 ```
 
-For multi-config generators such as Visual Studio, `--config Release` selects the Release configuration at build time.
+On Windows, use a Visual Studio Developer Command Prompt or pass the host compiler explicitly:
 
-## Correctness
+```powershell
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86 -DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>
+cmake --build build --config Release
+```
 
-Run the small known-answer tests before interpreting benchmark output:
+Run correctness checks before interpreting benchmark output:
 
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-The CTest suite runs the `CudaAesKat` executable. It uses deterministic vectors for:
-
-- ECB-128 and ECB-256
-- CTR-128 and CTR-256
-- GCM-128 and GCM-256
-
-The GCM checks cover the Phase 2 supported shape: 96-bit IV, empty AAD, full 16-byte blocks, ciphertext/tag match, wrong-tag rejection, and tampered-ciphertext rejection. This project is still a benchmark/research repository, not production cryptography software.
-
-## Run
-
-Linux:
-
-```bash
-./build/CudaProject
-```
-
-Windows:
-
-```powershell
-.\build\Release\CudaProject.exe
-```
-
-The benchmark currently exercises ECB, CTR, and GCM-shaped paths for AES-128 and AES-256 across several message sizes. Run correctness checks before interpreting benchmark output.
-
-For a small reproducibility smoke run:
+Run a small reproducibility smoke benchmark:
 
 ```bash
 ./build/CudaProject --runs 1 --sizes 1048576 --bench-dir bench/smoke
+python scripts/summarize_benchmarks.py bench/smoke/thr_gpu.csv bench/smoke/thr_cpu.csv -o bench/smoke/summary.md
 ```
 
-Windows:
+Windows executable paths may use `.\build\Release\CudaProject.exe` depending on the generator.
 
-```powershell
-.\build\Release\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\smoke
-```
+## Benchmark Artifacts
 
-Benchmark artifacts are written under `bench/` by default, or under the directory supplied with `--bench-dir`:
+The benchmark writes raw artifacts under `bench/` by default, or under `--bench-dir`:
 
-- `run_metadata.csv` records schema version, command line, run count, selected sizes, OS/compiler hints, CUDA runtime/driver versions, GPU name, compute capability, and a clocks/persistence note.
+- `run_metadata.csv` records schema version, command line, run count, selected sizes, OS/compiler hints, CUDA runtime/driver versions, GPU name, compute capability, and clocks/persistence note.
 - `thr_gpu.csv` records GPU rows with `timing_scope=kernel_only`; this is CUDA event timing around the kernel launch, not end-to-end application throughput.
 - `thr_cpu.csv` records OpenSSL CPU baseline rows with `timing_scope=cpu_baseline`.
+- `summary.md` is generated from raw CSV files by `scripts/summarize_benchmarks.py`.
 
-Raw result columns are stable for Phase 3: `schema_version`, `benchmark_run_id`, `timing_scope`, `device`, `cipher`, `block_size`, `run_index`, `run_count`, `time_ms`, `GiB/s`, `operation`, and `command_line`.
-
-Generate a summary table from the raw CSV files:
-
-```bash
-python scripts/summarize_benchmarks.py bench/thr_gpu.csv bench/thr_cpu.csv -o bench/summary.md
-```
-
-The summary groups by device, cipher, operation, block size, and timing scope, then reports count, min, mean, median, and max for time and throughput. It preserves `timing_scope`, so kernel-only GPU rows are not mixed with CPU baseline or future end-to-end rows.
-
-Example output:
+Raw result columns use Phase 3 schema `phase3.v1`:
 
 ```text
-[RUN 3/5] [GPU] ctr-128 processed 100 MiB in 12.3 ms -> 7.9 GiB/s
+schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,run_count,time_ms,GiB/s,operation,command_line
 ```
 
-Use repeated runs, fixed GPU clocks, persistence mode notes, and a quiet system when comparing throughput numbers. Treat kernel-only and end-to-end timings as different metrics; this phase labels the current GPU metric as kernel-only.
+## Documentation
 
-## Benchmark Methodology
+- [Architecture](docs/architecture.md) - canonical source layout and runtime flow
+- [Correctness](docs/correctness.md) - KAT coverage, GCM scope, and verification limits
+- [Benchmark Methodology](docs/benchmark-methodology.md) - reproducible run procedure, raw files, timing scope, and summary generation
+- [Results](docs/results.md) - how to package and interpret benchmark results
+- [Profiling](docs/profiling.md) - NVTX, Nsight, and PTX dump helpers
+- [Mode Matrix](docs/modes.md) - planned in Phase 4 final plan
+- [Legacy Tezcan Implementation](docs/legacy-tezcan.md) - planned in Phase 4 final plan
 
-Benchmark results are only meaningful after the CTest known-answer checks pass. The benchmark runner still performs embedded round-trip checks, but the deterministic KAT suite is the correctness gate for interpreting throughput.
+## Methodology Summary
 
-The current GPU timing scope is `kernel_only`: CUDA events are recorded around the kernel launch and synchronization. Allocation, host-to-device copy, device-to-host copy, output validation, and summary generation are outside this timed region. End-to-end throughput is not currently emitted as a benchmark row; do not compare `kernel_only` rows against future `end_to_end` rows without keeping the timing scope separate.
+Benchmark results are only meaningful after deterministic correctness tests pass. The GPU timing scope is currently `kernel_only`, which excludes allocation, host-to-device copy, device-to-host copy, output validation, and summary generation. Do not compare kernel-only rows against future end-to-end rows without preserving `timing_scope`.
 
-The CPU baseline uses OpenSSL EVP and is recorded separately with `timing_scope=cpu_baseline`. It is a comparison point, not a tuned CPU benchmark: CPU affinity, turbo behavior, OpenSSL build flags, and system load can affect it.
+Use repeated runs, fixed GPU clocks, persistence-mode notes, and a quiet system when comparing throughput numbers. Publish raw CSV files and generated summaries together.
 
-Recommended methodology for publishable runs:
+## Repository Layout
 
-1. Build in Release mode and record the exact CMake command.
-2. Run `ctest --test-dir build --output-on-failure`.
-3. Use an explicit benchmark command with `--runs`, `--sizes`, and `--bench-dir`.
-4. Record GPU clocks, persistence mode, driver, CUDA Toolkit, OS, compiler, GPU model, and command line. `run_metadata.csv` captures what the executable can query; clocks and persistence mode remain a manual note.
-5. Run on a quiet system and repeat enough runs for stable median throughput.
-6. Publish raw CSV files and generated `summary.md` together. Treat summary tables as derived output, not the source of truth.
+- `main.cu` - benchmark runner, CLI parsing, GPU launch orchestration, OpenSSL CPU comparison, CSV output, and debug routines
+- `aes_common.h`, `aes_tables.cu` - shared AES declarations, constants, lookup tables, and key expansion helpers
+- `aes128_*.cu`, `aes256_*.cu` - canonical AES kernel implementations
+- `tests/kat_main.cu` - deterministic known-answer tests
+- `scripts/summarize_benchmarks.py` - raw CSV to Markdown summary generator
+- `docs/` - public documentation
+- `v3/` - local experimental variant, not the canonical build target
+- `cihangirTezcanAESimplementation/` - legacy/provenance implementation
 
-Known limitations:
+## Current Limitations
 
-- GCM correctness coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
+- Runtime CMake/CTest verification in the current development shell is blocked until `nvcc` can find `cl.exe`.
+- GCM coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
 - Partial-block behavior and non-empty AAD are not benchmarked in v1.
-- The GPU result is kernel-only timing, not full application throughput.
 - CPU baseline rows are not a controlled CPU performance study.
-
-## Optional Tooling
-
-Generate a PTX dump for `aes128_ecb.cu`:
-
-```bash
-cmake --build build --target ptx-dump
-```
-
-Run the Nsight Systems helper target by configuring the executable path first:
-
-```bash
-cmake -S . -B build -DNSYS_EXECUTABLE="/path/to/nsys"
-cmake --build build --target nsight-profile
-```
+- This project does not claim to be the fastest GPU AES implementation.
 
 ## Roadmap Direction
 
-The near-term roadmap focuses on making this a credible open-source GPU AES benchmark:
+The v1 roadmap focuses on:
 
-- Portable build and repository hygiene
-- Standard AES-GCM correctness with tag verification and known-answer tests
-- Complete AES mode roadmap beyond the currently implemented modes
-- Reproducible benchmark harness and published result format
-- Documentation, contribution workflow, and SEO-ready project presentation
+- Open-source documentation and governance
+- Full practical AES mode coverage
+- Discoverability for CUDA AES and GPU AES benchmark searches
+- Versioned releases with reproducible raw benchmark artifacts
+
