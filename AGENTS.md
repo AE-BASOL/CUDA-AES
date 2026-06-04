@@ -14,7 +14,7 @@ Before planning or editing, read:
 
 ## Current Priority
 
-Phase 4 is the active phase: turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix.
+Phase 4 is completing with public documentation, governance files, mode matrix, and legacy provenance docs in place. Phase 5 is next: add the missing SP 800-38A confidentiality modes CBC, CFB, and OFB.
 
 Do not prioritize SEO copy, benchmark claims, or release polish before build reproducibility and correctness are trustworthy.
 

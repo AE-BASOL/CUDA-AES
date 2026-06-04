@@ -77,8 +77,8 @@ schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,
 - [Benchmark Methodology](docs/benchmark-methodology.md) - reproducible run procedure, raw files, timing scope, and summary generation
 - [Results](docs/results.md) - how to package and interpret benchmark results
 - [Profiling](docs/profiling.md) - NVTX, Nsight, and PTX dump helpers
-- [Mode Matrix](docs/modes.md) - planned in Phase 4 final plan
-- [Legacy Tezcan Implementation](docs/legacy-tezcan.md) - planned in Phase 4 final plan
+- [Mode Matrix](docs/modes.md) - implemented, tested, benchmarked, documented, and planned AES mode coverage
+- [Legacy Tezcan Implementation](docs/legacy-tezcan.md) - provenance and non-canonical legacy implementation notes
 
 ## Contributing And Governance
 
