@@ -24,12 +24,11 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 - Phase 1 validated portable CMake configuration and build-focused README guidance.
 - Phase 2 added deterministic known-answer tests for ECB, CTR, and GCM, plus GCM tag/authentication fixes at source level.
 - Phase 3 added reproducible benchmark metadata capture, stable raw CSV output, summary generation, methodology documentation, and CUDA event cleanup at source level.
+- Phase 4 added a public README/docs package, open-source governance files, citation metadata, issue/PR templates, an AES mode matrix, and legacy Tezcan provenance notes.
 
 ### Active
 
 - [ ] Plan and implement benchmark coverage beyond ECB/CTR/GCM for standard AES modes.
-- [ ] Rewrite the README as a high-trust landing page for CUDA/GPU developers.
-- [ ] Add open-source governance files: license, contributing guide, security policy, citation metadata, and issue templates.
 - [ ] Improve discoverability for GitHub search, Google indexing, and technical readers searching for GPU AES benchmarks.
 - [ ] Package benchmark results as versioned releases with reproducibility notes.
 - [ ] Keep the repo alive with clear maintenance rules, roadmap, changelog, and contribution workflow.
@@ -44,7 +43,7 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 
 ## Context
 
-The repository is brownfield CUDA/C++ code. Current code is useful but not yet ready for public prestige: Phase 1-3 have improved build portability, correctness checks, and benchmark reproducibility, but public-facing documentation, governance files, mode matrix coverage, and release workflow still need work.
+The repository is brownfield CUDA/C++ code. Current code is useful and now has public-facing documentation, governance files, a mode matrix, correctness docs, and benchmark methodology docs. Phase 5 should move from documentation into implementation by adding CBC, CFB, and OFB coverage.
 
 A main-branch code review on 2026-06-04 found three high-severity AES-GCM blockers: decrypt accepts unauthenticated ciphertext, IV broadcast uses warp-local `__shfl_sync` incorrectly for a 256-thread block, and tag generation is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR. Phase 2 fixed these at source level for the supported 96-bit-IV, empty-AAD, full-block GCM scope. Runtime CMake/CTest verification still needs a shell where `nvcc` can find `cl.exe`.
 
@@ -103,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state.
 
 ---
-*Last updated: 2026-06-04 after Phase 3 completion*
+*Last updated: 2026-06-04 after Phase 4 completion*

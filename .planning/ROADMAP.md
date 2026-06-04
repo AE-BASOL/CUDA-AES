@@ -11,7 +11,7 @@
 | 1 | Repository And Build Foundation | Complete 2026-06-04. Make the repo clean, portable, and buildable by an outside developer. | REPO-01, BUILD-01, BUILD-02, BUILD-03, BUILD-04, BUILD-05 |
 | 2 | Correctness Baseline | Prove AES outputs before publishing benchmark claims and close the GCM review blockers. | TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08 |
 | 3 | Reproducible Benchmark Harness | Complete 2026-06-04. Make benchmark runs repeatable, inspectable, resource-clean, and summarizable. | BENCH-01, BENCH-02, BENCH-03, BENCH-04, BENCH-05, BENCH-06 |
-| 4 | Open-Source Documentation Package | Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix. | REPO-02, REPO-03, DOCS-01, DOCS-02, DOCS-03, DOCS-05, MODE-01 |
+| 4 | Open-Source Documentation Package | Complete 2026-06-04. Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix. | REPO-02, REPO-03, DOCS-01, DOCS-02, DOCS-03, DOCS-05, MODE-01 |
 | 5 | Confidentiality Mode Expansion | Add the missing SP 800-38A confidentiality modes: CBC, CFB, and OFB. | MODE-02, MODE-03, MODE-04 |
 | 6 | Authenticated And Specialized Mode Expansion | Add CCM, XTS-AES, AES-KW, AES-KWP, and document GMAC/CMAC boundaries. | MODE-05, MODE-06, MODE-07, MODE-08 |
 | 7 | Discoverability And SEO | Optimize GitHub and web discoverability without compromising technical quality. | DOCS-04 |
@@ -95,6 +95,8 @@
 **Wave 2 blocked on Wave 1 completion. Wave 3 blocked on Wave 2 completion.**
 
 ## Phase 4: Open-Source Documentation Package
+
+**Status:** Complete 2026-06-04
 
 **Goal:** Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix.
 
