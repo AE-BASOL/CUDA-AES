@@ -33,6 +33,8 @@ Current deterministic known-answer tests cover:
 - AES-128 CCM ciphertext/tag/decrypt tag
 - AES-256 CCM ciphertext/tag/decrypt tag
 - CCM wrong-tag rejection
+- AES-128-XTS full-block encrypt/decrypt
+- AES-256-XTS full-block encrypt/decrypt
 
 ## GCM Scope
 
@@ -58,6 +60,18 @@ Current CCM correctness scope is:
 - wrong-tag rejection
 
 Non-empty AAD, partial-block behavior, variable nonce lengths, variable tag lengths, and a production AEAD API are future work.
+
+## XTS-AES Scope
+
+Current XTS-AES correctness scope is:
+
+- AES-128-XTS with 256 bits of total key material
+- AES-256-XTS with 512 bits of total key material
+- 16-byte sector tweak input
+- full 16-byte blocks
+- encrypt/decrypt known-answer checks
+
+Ciphertext stealing for non-block-multiple data units is not implemented in the current benchmark scope.
 
 ## Confidentiality Mode Scope
 

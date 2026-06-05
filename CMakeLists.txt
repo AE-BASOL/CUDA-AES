@@ -29,12 +29,14 @@ set(CUDA_KERNEL_SOURCES
     aes128_ofb.cu
     aes128_gcm.cu
     aes128_ccm.cu
+    aes128_xts.cu
     aes256_ctr.cu
     aes256_cbc.cu
     aes256_cfb.cu
     aes256_ofb.cu
     aes256_gcm.cu
     aes256_ccm.cu
+    aes256_xts.cu
     aes128_ecb.cu
     aes256_ecb.cu
 )

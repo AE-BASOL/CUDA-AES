@@ -40,7 +40,8 @@ static const char*  MODES[]     = {
     "ofb-128","ofb-256",
     "ctr-128","ctr-256",
     "gcm-128","gcm-256",
-    "ccm-128","ccm-256"
+    "ccm-128","ccm-256",
+    "xts-128","xts-256"
 };
 static const char*  BENCH_SCHEMA_VERSION = "phase3.v1";
 
@@ -601,13 +602,20 @@ int main(int argc, char** argv) {
         bool isCtr = mode.find("ctr")==0;
         bool isGcm = mode.find("gcm")==0;
         bool isCcm = mode.find("ccm")==0;
+        bool isXts = mode.find("xts")==0;
         int bits = mode.find("256")!=std::string::npos ? 256 : 128;
-        size_t keyBytes = bits/8;
+        size_t keyBytes = isXts ? static_cast<size_t>(bits / 4) : static_cast<size_t>(bits / 8);
         std::vector<uint8_t> key(keyBytes); fill_random(key.data(),keyBytes,rng);
         std::vector<uint32_t> rk(bits==128?44:60);
         if(bits==128) expandKey128(key.data(),rk.data()); else expandKey256(key.data(),rk.data());
         init_roundKeys(rk.data(), (int)rk.size());
-        const bool usesFeedbackIv = isCbc || isCfb || isOfb;
+        if (isXts) {
+            std::vector<uint32_t> tweak_rk(bits==128?44:60);
+            if(bits==128) expandKey128(key.data() + 16, tweak_rk.data());
+            else expandKey256(key.data() + 32, tweak_rk.data());
+            init_xts_tweak_roundKeys(tweak_rk.data(), (int)tweak_rk.size());
+        }
+        const bool usesFeedbackIv = isCbc || isCfb || isOfb || isXts;
         const bool usesAuthTag = isGcm || isCcm;
         const size_t iv_bytes = usesFeedbackIv ? 16 : 12;
         std::vector<uint8_t> iv(iv_bytes);
@@ -676,6 +684,8 @@ int main(int argc, char** argv) {
             else if(isGcm && bits==256) aes256_gcm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
             else if(isCcm && bits==128) aes128_ccm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
             else if(isCcm && bits==256) aes256_ccm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
+            else if(isXts && bits==128) aes128_xts_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv);
+            else if(isXts && bits==256) aes256_xts_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv);
             CHECK_CUDA(cudaDeviceSynchronize());
 
             // Copy ciphertext from GPU to host for printing a sample
@@ -699,6 +709,8 @@ int main(int argc, char** argv) {
             else if(isGcm && bits==256) aes256_gcm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
             else if(isCcm && bits==128) aes128_ccm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
             else if(isCcm && bits==256) aes256_ccm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
+            else if(isXts && bits==128) aes128_xts_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv);
+            else if(isXts && bits==256) aes256_xts_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv);
             CHECK_CUDA(cudaDeviceSynchronize());
 
             CHECK_CUDA(cudaMemcpy(h_rt_decrypted_gpu, d_rt_decrypted_final, bytes, cudaMemcpyDeviceToHost));
@@ -783,6 +795,8 @@ int main(int argc, char** argv) {
                     else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 ENC kernel"); aes256_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
                     else if(isCcm && bits==128){ NVTX_PUSH("CCM-128 ENC kernel"); aes128_ccm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
                     else if(isCcm && bits==256){ NVTX_PUSH("CCM-256 ENC kernel"); aes256_ccm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
+                    else if(isXts && bits==128){ NVTX_PUSH("XTS-128 ENC kernel"); aes128_xts_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
+                    else if(isXts && bits==256){ NVTX_PUSH("XTS-256 ENC kernel"); aes256_xts_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
                 } else {
                     if(isEcb && bits==128){ NVTX_PUSH("ECB-128 DEC kernel"); aes128_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
                     else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 DEC kernel"); aes256_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
@@ -798,6 +812,8 @@ int main(int argc, char** argv) {
                     else if(isGcm && bits==256){ NVTX_PUSH("GCM-256 DEC kernel"); aes256_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
                     else if(isCcm && bits==128){ NVTX_PUSH("CCM-128 DEC kernel"); aes128_ccm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
                     else if(isCcm && bits==256){ NVTX_PUSH("CCM-256 DEC kernel"); aes256_ccm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
+                    else if(isXts && bits==128){ NVTX_PUSH("XTS-128 DEC kernel"); aes128_xts_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
+                    else if(isXts && bits==256){ NVTX_PUSH("XTS-256 DEC kernel"); aes256_xts_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
                 }
                 cudaEventRecord(e); CHECK_CUDA(cudaEventSynchronize(e));
                 NVTX_POP(); // Pop NVTX range for the entire iteration
@@ -818,6 +834,7 @@ int main(int argc, char** argv) {
                 else if(isOfb&&bits==128) sel=&EVP_aes_128_ofb; else if(isOfb&&bits==256) sel=&EVP_aes_256_ofb;
                 else if(isCtr&&bits==128) sel=&EVP_aes_128_ctr; else if(isCtr&&bits==256) sel=&EVP_aes_256_ctr;
                 else if(isGcm&&bits==128) sel=&EVP_aes_128_gcm; else if(isGcm&&bits==256) sel=&EVP_aes_256_gcm;
+                else if(isXts&&bits==128) sel=&EVP_aes_128_xts; else if(isXts&&bits==256) sel=&EVP_aes_256_xts;
                 else sel=nullptr;
                 if (isCcm) cpu_thr = cpu_ccm_throughput(host_in.data(), bytes, key.data(), bits, decrypt);
                 else cpu_thr = cpu_aes_throughput(host_in.data(), bytes, key.data(), bits, decrypt, sel);

@@ -17,8 +17,9 @@ Implemented in the canonical top-level build:
 | CTR | Yes | Yes | Yes | Yes | 96-bit IV/counter helper in benchmark |
 | GCM | Yes | Yes | Yes | Yes | 96-bit IV, empty AAD, full blocks |
 | CCM | Yes | Yes | Yes | Yes | 96-bit nonce, empty AAD, 16-byte tag, full blocks |
+| XTS-AES | Yes | Yes | Yes | Yes | Storage-sector mode, 16-byte sector tweak, full blocks |
 
-Planned coverage includes XTS-AES, AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
+Planned coverage includes AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
 
 ## Quick Start
 
@@ -116,6 +117,7 @@ Use repeated runs, fixed GPU clocks, persistence-mode notes, and a quiet system 
 - Runtime CMake/CTest verification in the current development shell is blocked until `nvcc` can find `cl.exe`.
 - GCM coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
 - CCM coverage is limited to 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte blocks.
+- XTS-AES coverage is limited to full 16-byte blocks with a 16-byte sector tweak; ciphertext stealing is not implemented.
 - Partial-block behavior and non-empty AAD are not benchmarked in v1.
 - CPU baseline rows are not a controlled CPU performance study.
 - This project does not claim to be the fastest GPU AES implementation.

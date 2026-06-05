@@ -65,6 +65,27 @@ void load_key(const std::vector<uint8_t> &key) {
     }
 }
 
+void load_xts_keys(const std::vector<uint8_t> &key) {
+    if (key.size() == 32) {
+        std::array<uint32_t, 44> data_rk{};
+        std::array<uint32_t, 44> tweak_rk{};
+        expandKey128(key.data(), data_rk.data());
+        expandKey128(key.data() + 16, tweak_rk.data());
+        init_roundKeys(data_rk.data(), static_cast<int>(data_rk.size()));
+        init_xts_tweak_roundKeys(tweak_rk.data(), static_cast<int>(tweak_rk.size()));
+    } else if (key.size() == 64) {
+        std::array<uint32_t, 60> data_rk{};
+        std::array<uint32_t, 60> tweak_rk{};
+        expandKey256(key.data(), data_rk.data());
+        expandKey256(key.data() + 32, tweak_rk.data());
+        init_roundKeys(data_rk.data(), static_cast<int>(data_rk.size()));
+        init_xts_tweak_roundKeys(tweak_rk.data(), static_cast<int>(tweak_rk.size()));
+    } else {
+        std::fprintf(stderr, "Unsupported XTS key size: %zu\n", key.size());
+        std::exit(EXIT_FAILURE);
+    }
+}
+
 void pack_counter_block_le_words(const std::vector<uint8_t> &counter, uint64_t &lo, uint64_t &hi) {
     if (counter.size() != 16) {
         std::fprintf(stderr, "CTR counter block must be 16 bytes\n");
@@ -397,6 +418,41 @@ std::vector<uint8_t> run_ccm_decrypt(const std::vector<uint8_t> &key,
     return plain;
 }
 
+std::vector<uint8_t> run_xts(const std::vector<uint8_t> &key,
+                             const std::vector<uint8_t> &sector,
+                             const std::vector<uint8_t> &input,
+                             bool decrypt) {
+    if (sector.size() != 16) {
+        std::fprintf(stderr, "XTS sector tweak must be 16 bytes\n");
+        std::exit(EXIT_FAILURE);
+    }
+    load_xts_keys(key);
+    const size_t n_blocks = input.size() / 16;
+
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    uint8_t *d_tweak = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, input.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, input.size()));
+    CHECK_CUDA(cudaMalloc(&d_tweak, sector.size()));
+    CHECK_CUDA(cudaMemcpy(d_in, input.data(), input.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_tweak, sector.data(), sector.size(), cudaMemcpyHostToDevice));
+    dim3 block(kThreads);
+    dim3 grid(static_cast<unsigned>((n_blocks + block.x - 1) / block.x));
+    if (key.size() == 32 && !decrypt) aes128_xts_encrypt<<<grid, block>>>(d_in, d_out, n_blocks, d_tweak);
+    else if (key.size() == 32) aes128_xts_decrypt<<<grid, block>>>(d_in, d_out, n_blocks, d_tweak);
+    else if (!decrypt) aes256_xts_encrypt<<<grid, block>>>(d_in, d_out, n_blocks, d_tweak);
+    else aes256_xts_decrypt<<<grid, block>>>(d_in, d_out, n_blocks, d_tweak);
+    CHECK_CUDA(cudaDeviceSynchronize());
+
+    std::vector<uint8_t> out(input.size());
+    CHECK_CUDA(cudaMemcpy(out.data(), d_out, out.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    CHECK_CUDA(cudaFree(d_tweak));
+    return out;
+}
+
 bool run_all() {
     bool ok = true;
     init_T_tables();
@@ -560,6 +616,29 @@ bool run_all() {
     } else {
         std::printf("KAT PASS CCM-128 wrong tag rejected\n");
     }
+
+    const auto xts128_key = hex_to_bytes(
+        "000102030405060708090a0b0c0d0e0f"
+        "101112131415161718191a1b1c1d1e1f");
+    const auto xts256_key = hex_to_bytes(
+        "000102030405060708090a0b0c0d0e0f"
+        "101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f"
+        "303132333435363738393a3b3c3d3e3f");
+    const auto xts_sector = hex_to_bytes("00000000000000000000000000000000");
+    const auto xts_plain = hex_to_bytes(
+        "00112233445566778899aabbccddeeff"
+        "ffeeddccbbaa99887766554433221100");
+    const auto xts128_cipher = hex_to_bytes(
+        "171c69724dcf733f9aa6317d795153e4"
+        "fc82b5f65fee9898a9eb81b56ddca81c");
+    const auto xts256_cipher = hex_to_bytes(
+        "a38034920a5f4ead990482ea32f445b8"
+        "a536253d855bf4810f50a442537621ef");
+    ok &= expect_equal("XTS-128 encrypt", run_xts(xts128_key, xts_sector, xts_plain, false), xts128_cipher);
+    ok &= expect_equal("XTS-128 decrypt", run_xts(xts128_key, xts_sector, xts128_cipher, true), xts_plain);
+    ok &= expect_equal("XTS-256 encrypt", run_xts(xts256_key, xts_sector, xts_plain, false), xts256_cipher);
+    ok &= expect_equal("XTS-256 decrypt", run_xts(xts256_key, xts_sector, xts256_cipher, true), xts_plain);
 
     return ok;
 }

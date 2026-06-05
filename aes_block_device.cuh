@@ -4,8 +4,10 @@
 #include "aes_common.h"
 
 struct AesBlock {
-    uint32_t w[4];
-    uint8_t b[16];
+    union {
+        uint32_t w[4];
+        uint8_t b[16];
+    };
 };
 
 static __device__ __forceinline__ uint8_t aes_xtime(uint8_t x) {

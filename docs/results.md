@@ -31,6 +31,8 @@ CBC, CFB, and OFB rows should be interpreted with their feedback dependencies in
 
 CCM rows include both encryption and authentication tag computation for the current benchmark scope: 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte blocks. Do not compare CCM rows against confidentiality-only modes without preserving that AEAD workload distinction.
 
+XTS-AES rows are storage-sector confidentiality measurements with two AES key schedules and a 16-byte sector tweak. They are not authenticated-encryption rows, and current results do not cover ciphertext stealing for non-block-multiple sectors.
+
 ## Claims Policy
 
 Avoid unsupported performance claims. Results should be presented as reproducible measurements for a named environment and commit, not as universal rankings.

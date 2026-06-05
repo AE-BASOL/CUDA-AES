@@ -24,6 +24,7 @@ __device__ __constant__ uint32_t d_U0[256], d_U1[256], d_U2[256], d_U3[256];
 // Device round key array (max 60 32-bit words for AES-256).
 // All key schedules (128/256-bit) are stored here; AES-128 uses first 44 words, AES-256 uses 60.
 __device__ __constant__ uint32_t d_roundKeys[60];
+__device__ __constant__ uint32_t d_xtsTweakRoundKeys[60];
 
 
 
@@ -145,6 +146,14 @@ void init_roundKeys(const uint32_t *rk, int nWords) {
     cudaError_t err = cudaMemcpyToSymbol(d_roundKeys, rk, nWords * sizeof(uint32_t));
     if (err != cudaSuccess) {
         fprintf(stderr, "cudaMemcpyToSymbol(d_roundKeys) failed: %s\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+}
+
+void init_xts_tweak_roundKeys(const uint32_t *rk, int nWords) {
+    cudaError_t err = cudaMemcpyToSymbol(d_xtsTweakRoundKeys, rk, nWords * sizeof(uint32_t));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpyToSymbol(d_xtsTweakRoundKeys) failed: %s\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 }
