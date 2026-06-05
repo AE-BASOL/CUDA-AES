@@ -18,7 +18,7 @@ Run CTest before interpreting benchmark output:
 ctest --test-dir build --output-on-failure
 ```
 
-The CTest `CudaAesKat` target covers ECB, CTR, and GCM known-answer checks for AES-128 and AES-256. GCM scope is 96-bit IV, empty AAD, and full 16-byte blocks.
+The CTest `CudaAesKat` target covers ECB, CBC, CFB-128, OFB, CTR, and GCM known-answer checks for AES-128 and AES-256. GCM scope is 96-bit IV, empty AAD, and full 16-byte blocks.
 
 ## Reproducibility Command
 
@@ -76,5 +76,5 @@ The summary groups by device, cipher, operation, block size, and `timing_scope`,
 - GPU timing is currently kernel-only and excludes allocation and host/device transfers.
 - CPU baseline uses OpenSSL EVP but does not pin CPU frequency or affinity.
 - GCM benchmark scope follows Phase 2 correctness scope: 96-bit IV, empty AAD, full blocks.
+- CBC, CFB, and OFB rows are feedback-mode coverage and should not be interpreted as CTR-like natural parallel throughput. CFB rows use CFB-128 full-block segment semantics.
 - Runtime verification in the current shell is blocked until `cl.exe` is available to `nvcc`.
-

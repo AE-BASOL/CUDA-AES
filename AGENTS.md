@@ -14,7 +14,9 @@ Before planning or editing, read:
 
 ## Current Priority
 
-Phase 5 is ready to plan: add the missing SP 800-38A confidentiality modes CBC, CFB, and OFB.
+Phase 5 execution is complete at source level: CBC, CFB-128, and OFB have AES-128/AES-256 source, KAT, benchmark, and documentation coverage. Runtime CMake/CTest remains blocked in this shell until `nvcc` can find `cl.exe`.
+
+Next priority is Phase 6: authenticated and specialized mode expansion for CCM, XTS-AES, AES-KW, AES-KWP, and GMAC/CMAC boundary documentation.
 
 Do not prioritize SEO copy, benchmark claims, or release polish before build reproducibility and correctness are trustworthy.
 

@@ -25,6 +25,12 @@ The repository now has a small CTest-registered known-answer-test executable for
 - ECB-256 encrypt/decrypt
 - CTR-128 encrypt/decrypt
 - CTR-256 encrypt/decrypt
+- CBC-128 encrypt/decrypt
+- CBC-256 encrypt/decrypt
+- CFB-128 AES-128 encrypt/decrypt
+- CFB-128 AES-256 encrypt/decrypt
+- OFB-128 encrypt/decrypt
+- OFB-256 encrypt/decrypt
 - GCM-128 ciphertext/tag/decrypt tag
 - GCM-256 ciphertext/tag/decrypt tag
 - GCM wrong-tag rejection
@@ -63,7 +69,7 @@ The executable supports small focused debug paths:
 
 Top-level `main.cu` benchmarks:
 
-- Modes: `ecb-128`, `ecb-256`, `ctr-128`, `ctr-256`, `gcm-128`, and `gcm-256`.
+- Modes: `ecb-128`, `ecb-256`, `cbc-128`, `cbc-256`, `cfb-128`, `cfb-256`, `ofb-128`, `ofb-256`, `ctr-128`, `ctr-256`, `gcm-128`, and `gcm-256`.
 - Sizes: 1 MiB, 10 MiB, 100 MiB, and 1 GiB.
 - Runs: 5 per mode/size combination.
 - Operations: encryption by default, decryption when `--decrypt` is supplied.
