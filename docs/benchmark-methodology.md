@@ -41,7 +41,7 @@ Future end-to-end rows must use a distinct `timing_scope`.
 
 ## Feedback Modes
 
-CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their benchmark rows are useful for reproducibility and mode coverage, but they should not be read as naturally parallel CTR-like throughput. CBC encryption in particular is dependency-bound; CBC decryption can expose more block-level parallelism because each plaintext block depends on the current and previous ciphertext blocks.
+CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their benchmark rows are useful for reproducibility and mode coverage, but they should not be read as naturally parallel CTR-like throughput. CBC encryption in particular is dependency-bound; CBC decryption can expose more block-level parallelism because each plaintext block depends on the current and previous ciphertext blocks. CFB rows use full-block CFB-128 segment semantics.
 
 ## Limitations
 
