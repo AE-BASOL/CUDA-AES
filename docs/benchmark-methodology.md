@@ -39,10 +39,14 @@ CPU rows use `timing_scope=cpu_baseline`. They are OpenSSL EVP comparison rows, 
 
 Future end-to-end rows must use a distinct `timing_scope`.
 
+## Feedback Modes
+
+CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their benchmark rows are useful for reproducibility and mode coverage, but they should not be read as naturally parallel CTR-like throughput. CBC encryption in particular is dependency-bound; CBC decryption can expose more block-level parallelism because each plaintext block depends on the current and previous ciphertext blocks.
+
 ## Limitations
 
 - Do not compare kernel-only and end-to-end rows as the same metric.
 - Do not publish throughput claims without raw artifacts.
 - Do not treat the project as production cryptography software.
+- Interpret CBC, CFB, and OFB feedback-mode throughput with their dependency chains in mind.
 - GCM benchmark scope matches the current correctness scope: 96-bit IV, empty AAD, full blocks.
-

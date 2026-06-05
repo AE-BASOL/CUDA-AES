@@ -33,7 +33,7 @@
 constexpr int THREADS_PER_BLOCK = 256;
 constexpr int DEFAULT_NUM_RUNS  = 5;
 static const size_t DEFAULT_SIZES[] = {1ull<<20, 10ull<<20, 100ull<<20, 1ull<<30};
-static const char*  MODES[]     = {"ecb-128","ecb-256","ctr-128","ctr-256","gcm-128","gcm-256"};
+static const char*  MODES[]     = {"ecb-128","ecb-256","cbc-128","cbc-256","ctr-128","ctr-256","gcm-128","gcm-256"};
 static const char*  BENCH_SCHEMA_VERSION = "phase3.v1";
 
 // -------------------------------
@@ -551,6 +551,7 @@ int main(int argc, char** argv) {
     for(const char* modeStr : MODES){
         std::string mode(modeStr);
         bool isEcb = mode.find("ecb")==0;
+        bool isCbc = mode.find("cbc")==0;
         bool isCtr = mode.find("ctr")==0;
         bool isGcm = mode.find("gcm")==0;
         int bits = mode.find("256")!=std::string::npos ? 256 : 128;
@@ -559,7 +560,9 @@ int main(int argc, char** argv) {
         std::vector<uint32_t> rk(bits==128?44:60);
         if(bits==128) expandKey128(key.data(),rk.data()); else expandKey256(key.data(),rk.data());
         init_roundKeys(rk.data(), (int)rk.size());
-        std::vector<uint8_t> iv(12); if(!isEcb) fill_random(iv.data(),12,rng); // IV for CTR/GCM
+        const size_t iv_bytes = isCbc ? 16 : 12;
+        std::vector<uint8_t> iv(iv_bytes);
+        if(!isEcb) fill_random(iv.data(), iv.size(), rng);
 
         for(size_t sz : bench_config.sizes){
             size_t nBlocks=(sz+15)/16; size_t bytes=nBlocks*16;
@@ -572,7 +575,7 @@ int main(int argc, char** argv) {
             for(int k_idx = 0; k_idx < std::min((size_t)8, keyBytes); ++k_idx) printf("%02x", key[k_idx]);
             printf("...\n");
             if(!isEcb){
-                printf("  IV Used (CTR/GCM): ");
+                printf("  IV Used:          ");
                 for(int iv_idx = 0; iv_idx < std::min((size_t)8, iv.size()); ++iv_idx) printf("%02x", iv[iv_idx]);
                 printf("...\n");
             }
@@ -600,16 +603,20 @@ int main(int argc, char** argv) {
             dim3 rt_kernel_grid_dim((unsigned)((nBlocks + rt_kernel_block_dim.x - 1) / rt_kernel_block_dim.x));
             if (isGcm) rt_kernel_grid_dim.x = 1; // GCM kernels typically use 1 block
 
+            if (isCbc || isGcm) {
+                CHECK_CUDA(cudaMalloc(&d_rt_iv, iv.size()));
+                CHECK_CUDA(cudaMemcpy(d_rt_iv, iv.data(), iv.size(), cudaMemcpyHostToDevice));
+            }
             if (isGcm) {
-                CHECK_CUDA(cudaMalloc(&d_rt_iv, 12));
                 CHECK_CUDA(cudaMalloc(&d_rt_tag_encrypt, 16));
                 CHECK_CUDA(cudaMalloc(&d_rt_tag_decrypt_out, 16));
-                CHECK_CUDA(cudaMemcpy(d_rt_iv, iv.data(), 12, cudaMemcpyHostToDevice));
             }
 
             // Perform Encryption
             if(isEcb && bits==128) aes128_ecb_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks);
             else if(isEcb && bits==256) aes256_ecb_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks);
+            else if(isCbc && bits==128) aes128_cbc_encrypt<<<1,1>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv);
+            else if(isCbc && bits==256) aes256_cbc_encrypt<<<1,1>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv);
             else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes128_ctr_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks,lo,hi); }
             else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes256_ctr_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks,lo,hi); }
             else if(isGcm && bits==128) aes128_gcm_encrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_plain, d_rt_cipher, nBlocks, d_rt_iv, d_rt_tag_encrypt);
@@ -625,6 +632,8 @@ int main(int argc, char** argv) {
             // Perform Decryption
             if(isEcb && bits==128) aes128_ecb_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks);
             else if(isEcb && bits==256) aes256_ecb_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks);
+            else if(isCbc && bits==128) aes128_cbc_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv);
+            else if(isCbc && bits==256) aes256_cbc_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv);
             else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes128_ctr_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks,lo,hi); }
             else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); aes256_ctr_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks,lo,hi); }
             else if(isGcm && bits==128) aes128_gcm_decrypt<<<rt_kernel_grid_dim,rt_kernel_block_dim>>>(d_rt_cipher, d_rt_decrypted_final, nBlocks, d_rt_iv, d_rt_tag_encrypt, d_rt_tag_decrypt_out);
@@ -683,7 +692,8 @@ int main(int argc, char** argv) {
                 fill_random(h_in,bytes,rng);
                 uint8_t *d_in,*d_out,*d_tag=nullptr,*d_iv=nullptr;
                 CHECK_CUDA(cudaMalloc(&d_in,bytes)); CHECK_CUDA(cudaMalloc(&d_out,bytes));
-                if(isGcm) { CHECK_CUDA(cudaMalloc(&d_tag,16)); CHECK_CUDA(cudaMalloc(&d_iv,12)); CHECK_CUDA(cudaMemcpy(d_iv,iv.data(),12,cudaMemcpyHostToDevice)); }
+                if(isCbc || isGcm) { CHECK_CUDA(cudaMalloc(&d_iv,iv.size())); CHECK_CUDA(cudaMemcpy(d_iv,iv.data(),iv.size(),cudaMemcpyHostToDevice)); }
+                if(isGcm) { CHECK_CUDA(cudaMalloc(&d_tag,16)); }
                 CHECK_CUDA(cudaMemcpy(d_in,h_in,bytes,cudaMemcpyHostToDevice));
                 dim3 block(blockOverride); dim3 grid((unsigned)((nBlocks+block.x-1)/block.x));
 
@@ -700,6 +710,8 @@ int main(int argc, char** argv) {
                 if(!decrypt){
                     if(isEcb && bits==128){ NVTX_PUSH("ECB-128 ENC kernel"); aes128_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
                     else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 ENC kernel"); aes256_ecb_encrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isCbc && bits==128){ NVTX_PUSH("CBC-128 ENC kernel"); aes128_cbc_encrypt<<<1,1>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
+                    else if(isCbc && bits==256){ NVTX_PUSH("CBC-256 ENC kernel"); aes256_cbc_encrypt<<<1,1>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
                     else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 ENC kernel"); aes128_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
                     else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 ENC kernel"); aes256_ctr_encrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
                     else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 ENC kernel"); aes128_gcm_encrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag); NVTX_POP(); }
@@ -707,6 +719,8 @@ int main(int argc, char** argv) {
                 } else {
                     if(isEcb && bits==128){ NVTX_PUSH("ECB-128 DEC kernel"); aes128_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
                     else if(isEcb && bits==256){ NVTX_PUSH("ECB-256 DEC kernel"); aes256_ecb_decrypt<<<grid,block>>>(d_in,d_out,nBlocks); NVTX_POP(); }
+                    else if(isCbc && bits==128){ NVTX_PUSH("CBC-128 DEC kernel"); aes128_cbc_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
+                    else if(isCbc && bits==256){ NVTX_PUSH("CBC-256 DEC kernel"); aes256_cbc_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,d_iv); NVTX_POP(); }
                     else if(isCtr && bits==128){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-128 DEC kernel"); aes128_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
                     else if(isCtr && bits==256){ uint64_t lo,hi; packCtr(iv.data(),lo,hi); NVTX_PUSH("CTR-256 DEC kernel"); aes256_ctr_decrypt<<<grid,block>>>(d_in,d_out,nBlocks,lo,hi); NVTX_POP(); }
                     else if(isGcm && bits==128){ NVTX_PUSH("GCM-128 DEC kernel"); aes128_gcm_decrypt<<<1,THREADS_PER_BLOCK>>>(d_in,d_out,nBlocks,d_iv,d_tag,d_tag); NVTX_POP(); }
@@ -725,6 +739,7 @@ int main(int argc, char** argv) {
                 std::vector<uint8_t> host_in(bytes); CHECK_CUDA(cudaMemcpy(host_in.data(),d_in,bytes,cudaMemcpyDeviceToHost));
                 const EVP_CIPHER* (*sel)();
                 if(isEcb&&bits==128) sel=&EVP_aes_128_ecb; else if(isEcb&&bits==256) sel=&EVP_aes_256_ecb;
+                else if(isCbc&&bits==128) sel=&EVP_aes_128_cbc; else if(isCbc&&bits==256) sel=&EVP_aes_256_cbc;
                 else if(isCtr&&bits==128) sel=&EVP_aes_128_ctr; else if(isCtr&&bits==256) sel=&EVP_aes_256_ctr;
                 else if(isGcm&&bits==128) sel=&EVP_aes_128_gcm; else sel=&EVP_aes_256_gcm;
                 double cpu_thr = cpu_aes_throughput(host_in.data(), bytes, key.data(), bits, decrypt, sel);
