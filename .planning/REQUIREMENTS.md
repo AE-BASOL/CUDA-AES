@@ -43,7 +43,7 @@
 ### AES Mode Coverage
 
 - [x] **MODE-01**: Reader can see a mode matrix covering ECB, CBC, CFB, OFB, CTR, GCM/GMAC, CCM, XTS-AES, AES-KW, and AES-KWP.
-- [ ] **MODE-02**: Developer can run correctness tests and benchmarks for CBC mode.
+- [x] **MODE-02**: Developer can run correctness tests and benchmarks for CBC mode.
 - [ ] **MODE-03**: Developer can run correctness tests and benchmarks for CFB mode.
 - [ ] **MODE-04**: Developer can run correctness tests and benchmarks for OFB mode.
 - [ ] **MODE-05**: Developer can run correctness tests and benchmarks for CCM mode.
@@ -127,7 +127,7 @@
 | DOCS-02 | Phase 4 | Complete |
 | DOCS-03 | Phase 4 | Complete |
 | DOCS-05 | Phase 4 | Complete |
-| MODE-02 | Phase 5 | Pending |
+| MODE-02 | Phase 5 | Complete |
 | MODE-03 | Phase 5 | Pending |
 | MODE-04 | Phase 5 | Pending |
 | MODE-05 | Phase 6 | Pending |
