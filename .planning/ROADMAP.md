@@ -184,6 +184,12 @@
 4. Optional GitHub Pages plan is ready if public docs need stronger indexing.
 5. No keyword stuffing or unsupported performance claims are introduced.
 
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `07-01` | 1 | README discoverability wording, stable docs landing page, GitHub metadata recommendations, and DOCS-04 verification evidence |
+
 ## Phase 8: Release And Maintenance Loop
 
 **Goal:** Publish a v1 release and define how the repo stays alive.
