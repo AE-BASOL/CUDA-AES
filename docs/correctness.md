@@ -35,6 +35,9 @@ Current deterministic known-answer tests cover:
 - CCM wrong-tag rejection
 - AES-128-XTS full-block encrypt/decrypt
 - AES-256-XTS full-block encrypt/decrypt
+- AES-KW AES-128/AES-256 wrap/unwrap
+- AES-KWP AES-128/AES-256 wrap/unwrap
+- AES-KW tamper unwrap rejection
 
 ## GCM Scope
 
@@ -72,6 +75,19 @@ Current XTS-AES correctness scope is:
 - encrypt/decrypt known-answer checks
 
 Ciphertext stealing for non-block-multiple data units is not implemented in the current benchmark scope.
+
+## AES-KW And AES-KWP Scope
+
+Current key-wrap correctness scope is:
+
+- AES-KW with AES-128 and AES-256 key-encryption keys
+- AES-KWP with AES-128 and AES-256 key-encryption keys
+- fixed AES-KW 16-byte key-data records
+- fixed AES-KWP 20-byte key-data records with padding
+- wrap/unwrap known-answer checks
+- AES-KW tamper unwrap rejection
+
+These are key-management workloads, not bulk encryption modes.
 
 ## Confidentiality Mode Scope
 

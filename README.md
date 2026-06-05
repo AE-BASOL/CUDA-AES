@@ -18,8 +18,10 @@ Implemented in the canonical top-level build:
 | GCM | Yes | Yes | Yes | Yes | 96-bit IV, empty AAD, full blocks |
 | CCM | Yes | Yes | Yes | Yes | 96-bit nonce, empty AAD, 16-byte tag, full blocks |
 | XTS-AES | Yes | Yes | Yes | Yes | Storage-sector mode, 16-byte sector tweak, full blocks |
+| AES-KW | Yes | Yes | Yes | Yes | Key-wrap workload, 16-byte key data records |
+| AES-KWP | Yes | Yes | Yes | Yes | Key-wrap-with-padding workload, 20-byte key data records |
 
-Planned coverage includes AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
+Planned coverage includes distinct GMAC/CMAC authentication benchmarking.
 
 ## Quick Start
 
@@ -118,6 +120,7 @@ Use repeated runs, fixed GPU clocks, persistence-mode notes, and a quiet system 
 - GCM coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
 - CCM coverage is limited to 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte blocks.
 - XTS-AES coverage is limited to full 16-byte blocks with a 16-byte sector tweak; ciphertext stealing is not implemented.
+- AES-KW and AES-KWP benchmark rows are GPU key-wrap workload rows. They are not bulk encryption throughput, and CPU baseline rows are not emitted for these modes yet.
 - Partial-block behavior and non-empty AAD are not benchmarked in v1.
 - CPU baseline rows are not a controlled CPU performance study.
 - This project does not claim to be the fastest GPU AES implementation.

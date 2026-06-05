@@ -47,6 +47,15 @@ GCM and CCM rows include authentication tag work in the measured kernel. Current
 
 XTS-AES rows model full-block storage data units with a 16-byte sector tweak and two AES key schedules. XTS is confidentiality-only and does not authenticate data. Current benchmark rows do not implement ciphertext stealing, so non-block-multiple storage sectors are out of scope.
 
+## Key-Wrap Modes
+
+AES-KW and AES-KWP rows are key-management workload rows, not bulk encryption throughput rows. The benchmark batches fixed-size records so the existing CSV schema can still be used:
+
+- AES-KW wraps 16-byte key-data records to 24-byte wrapped records.
+- AES-KWP wraps 20-byte key-data records to 32-byte wrapped records.
+- `block_size` records the total input key-material bytes processed across the batch.
+- Current key-wrap benchmark rows are GPU `kernel_only` rows; CPU baseline rows are not emitted for AES-KW/AES-KWP yet.
+
 ## Feedback Modes
 
 CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their benchmark rows are useful for reproducibility and mode coverage, but they should not be read as naturally parallel CTR-like throughput. CBC encryption in particular is dependency-bound; CBC decryption can expose more block-level parallelism because each plaintext block depends on the current and previous ciphertext blocks. CFB rows use full-block CFB-128 segment semantics.
@@ -60,3 +69,4 @@ CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their b
 - GCM benchmark scope matches the current correctness scope: 96-bit IV, empty AAD, full blocks.
 - CCM benchmark scope matches the current correctness scope: 96-bit nonce, empty AAD, 16-byte tag, full blocks.
 - XTS-AES benchmark scope is full 16-byte blocks with a 16-byte sector tweak; ciphertext stealing is out of scope.
+- AES-KW/AES-KWP benchmark scope is fixed-size batched key-wrap records, not streaming buffers.

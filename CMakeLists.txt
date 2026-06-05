@@ -30,6 +30,7 @@ set(CUDA_KERNEL_SOURCES
     aes128_gcm.cu
     aes128_ccm.cu
     aes128_xts.cu
+    aes128_kw.cu
     aes256_ctr.cu
     aes256_cbc.cu
     aes256_cfb.cu
@@ -37,6 +38,7 @@ set(CUDA_KERNEL_SOURCES
     aes256_gcm.cu
     aes256_ccm.cu
     aes256_xts.cu
+    aes256_kw.cu
     aes128_ecb.cu
     aes256_ecb.cu
 )

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <algorithm>
 #include "aes_common.h"
 #include "profiling_helpers.h"
 #include <iomanip> // For formatting output
@@ -41,7 +42,9 @@ static const char*  MODES[]     = {
     "ctr-128","ctr-256",
     "gcm-128","gcm-256",
     "ccm-128","ccm-256",
-    "xts-128","xts-256"
+    "xts-128","xts-256",
+    "kw-128","kw-256",
+    "kwp-128","kwp-256"
 };
 static const char*  BENCH_SCHEMA_VERSION = "phase3.v1";
 
@@ -603,6 +606,9 @@ int main(int argc, char** argv) {
         bool isGcm = mode.find("gcm")==0;
         bool isCcm = mode.find("ccm")==0;
         bool isXts = mode.find("xts")==0;
+        bool isKwp = mode.find("kwp")==0;
+        bool isKw = mode.find("kw-")==0;
+        bool isKeyWrap = isKw || isKwp;
         int bits = mode.find("256")!=std::string::npos ? 256 : 128;
         size_t keyBytes = isXts ? static_cast<size_t>(bits / 4) : static_cast<size_t>(bits / 8);
         std::vector<uint8_t> key(keyBytes); fill_random(key.data(),keyBytes,rng);
@@ -623,6 +629,85 @@ int main(int argc, char** argv) {
 
         for(size_t sz : bench_config.sizes){
             size_t nBlocks=(sz+15)/16; size_t bytes=nBlocks*16;
+
+            if (isKeyWrap) {
+                const size_t plain_record = isKwp ? 20 : 16;
+                const size_t wrapped_record = isKwp ? 32 : 24;
+                const size_t records = std::max<size_t>(1, sz / plain_record);
+                const size_t plain_bytes = records * plain_record;
+                const size_t wrapped_bytes = records * wrapped_record;
+
+                printf("\n================ KEY WRAP %zu ================\n", sz);
+                printf("KEY_WRAP_CHECK %-10s records=%zu input_bytes=%zu wrapped_bytes=%zu\n", mode.c_str(), records, plain_bytes, wrapped_bytes);
+
+                uint8_t *h_plain = nullptr;
+                uint8_t *h_unwrapped = nullptr;
+                CHECK_CUDA(cudaMallocHost(&h_plain, plain_bytes));
+                CHECK_CUDA(cudaMallocHost(&h_unwrapped, plain_bytes));
+                fill_random(h_plain, plain_bytes, rng);
+                uint8_t *d_plain = nullptr, *d_wrapped = nullptr, *d_unwrapped = nullptr, *d_status = nullptr;
+                CHECK_CUDA(cudaMalloc(&d_plain, plain_bytes));
+                CHECK_CUDA(cudaMalloc(&d_wrapped, wrapped_bytes));
+                CHECK_CUDA(cudaMalloc(&d_unwrapped, plain_bytes));
+                CHECK_CUDA(cudaMalloc(&d_status, records));
+                CHECK_CUDA(cudaMemcpy(d_plain, h_plain, plain_bytes, cudaMemcpyHostToDevice));
+                dim3 block(blockOverride);
+                dim3 grid((unsigned)((records + block.x - 1) / block.x));
+
+                if (isKw && bits == 128) aes128_kw_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                else if (isKw && bits == 256) aes256_kw_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                else if (isKwp && bits == 128) aes128_kwp_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                else aes256_kwp_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                CHECK_CUDA(cudaDeviceSynchronize());
+
+                if (isKw && bits == 128) aes128_kw_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                else if (isKw && bits == 256) aes256_kw_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                else if (isKwp && bits == 128) aes128_kwp_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                else aes256_kwp_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                CHECK_CUDA(cudaDeviceSynchronize());
+                CHECK_CUDA(cudaMemcpy(h_unwrapped, d_unwrapped, plain_bytes, cudaMemcpyDeviceToHost));
+                std::vector<uint8_t> h_status(records);
+                CHECK_CUDA(cudaMemcpy(h_status.data(), d_status, records, cudaMemcpyDeviceToHost));
+                bool match = std::memcmp(h_plain, h_unwrapped, plain_bytes) == 0;
+                for (uint8_t status_byte : h_status) match = match && (status_byte == 1);
+                printf("  Result:           %s\n", match ? "PASS" : "FAIL");
+
+                for(int run=1; run<=bench_config.runs; ++run){
+                    cudaEvent_t s,e;
+                    CHECK_CUDA(cudaEventCreate(&s));
+                    CHECK_CUDA(cudaEventCreate(&e));
+                    cudaEventRecord(s);
+                    if (!decrypt) {
+                        if (isKw && bits == 128) aes128_kw_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                        else if (isKw && bits == 256) aes256_kw_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                        else if (isKwp && bits == 128) aes128_kwp_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                        else aes256_kwp_wrap<<<grid, block>>>(d_plain, d_wrapped, records);
+                    } else {
+                        if (isKw && bits == 128) aes128_kw_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                        else if (isKw && bits == 256) aes256_kw_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                        else if (isKwp && bits == 128) aes128_kwp_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                        else aes256_kwp_unwrap<<<grid, block>>>(d_wrapped, d_unwrapped, records, d_status);
+                    }
+                    cudaEventRecord(e);
+                    CHECK_CUDA(cudaEventSynchronize(e));
+                    float ms = 0.0f;
+                    cudaEventElapsedTime(&ms, s, e);
+                    CHECK_CUDA(cudaEventDestroy(s));
+                    CHECK_CUDA(cudaEventDestroy(e));
+                    double gib = static_cast<double>(plain_bytes) / static_cast<double>(1ull << 30);
+                    double thr = gib / (ms / 1000.0);
+                    printf("RESULT_GPU %-10s %-12zu %-5d %-10.3f %-10.3f %-5s\n", mode.c_str(), plain_bytes, run, ms, thr, decrypt ? "UNWRAP" : "WRAP");
+                    append_benchmark_row(gpu_csv_path, run_id, "kernel_only", "GPU", mode, plain_bytes, run, bench_config.runs, ms, thr, decrypt ? "UNWRAP" : "WRAP", bench_config.command_line);
+                }
+
+                CHECK_CUDA(cudaFreeHost(h_plain));
+                CHECK_CUDA(cudaFreeHost(h_unwrapped));
+                CHECK_CUDA(cudaFree(d_plain));
+                CHECK_CUDA(cudaFree(d_wrapped));
+                CHECK_CUDA(cudaFree(d_unwrapped));
+                CHECK_CUDA(cudaFree(d_status));
+                continue;
+            }
 
             printf("\n================ ROUND %zu ================\n", sz);
             printf("ROUND_TRIP_CHECK %-10s %-12zu\n", mode.c_str(), bytes);

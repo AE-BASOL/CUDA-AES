@@ -33,6 +33,8 @@ CCM rows include both encryption and authentication tag computation for the curr
 
 XTS-AES rows are storage-sector confidentiality measurements with two AES key schedules and a 16-byte sector tweak. They are not authenticated-encryption rows, and current results do not cover ciphertext stealing for non-block-multiple sectors.
 
+AES-KW and AES-KWP rows are key-wrap workload measurements. For those rows, `block_size` is total input key-material bytes across fixed-size records. Do not compare AES-KW/AES-KWP rows directly with streaming encryption modes; they exercise small key-management records and currently emit GPU rows only.
+
 ## Claims Policy
 
 Avoid unsupported performance claims. Results should be presented as reproducible measurements for a named environment and commit, not as universal rankings.

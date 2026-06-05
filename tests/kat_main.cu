@@ -453,6 +453,102 @@ std::vector<uint8_t> run_xts(const std::vector<uint8_t> &key,
     return out;
 }
 
+std::vector<uint8_t> run_kw_wrap(const std::vector<uint8_t> &key,
+                                 const std::vector<uint8_t> &plain) {
+    load_key(key);
+    const size_t records = plain.size() / 16;
+    std::vector<uint8_t> wrapped(records * 24);
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, plain.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, wrapped.size()));
+    CHECK_CUDA(cudaMemcpy(d_in, plain.data(), plain.size(), cudaMemcpyHostToDevice));
+    dim3 block(kThreads);
+    dim3 grid(static_cast<unsigned>((records + block.x - 1) / block.x));
+    if (key.size() == 16) aes128_kw_wrap<<<grid, block>>>(d_in, d_out, records);
+    else aes256_kw_wrap<<<grid, block>>>(d_in, d_out, records);
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaMemcpy(wrapped.data(), d_out, wrapped.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    return wrapped;
+}
+
+std::vector<uint8_t> run_kw_unwrap(const std::vector<uint8_t> &key,
+                                   const std::vector<uint8_t> &wrapped,
+                                   std::vector<uint8_t> *status) {
+    load_key(key);
+    const size_t records = wrapped.size() / 24;
+    std::vector<uint8_t> plain(records * 16);
+    status->assign(records, 0);
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    uint8_t *d_status = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, wrapped.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, plain.size()));
+    CHECK_CUDA(cudaMalloc(&d_status, status->size()));
+    CHECK_CUDA(cudaMemcpy(d_in, wrapped.data(), wrapped.size(), cudaMemcpyHostToDevice));
+    dim3 block(kThreads);
+    dim3 grid(static_cast<unsigned>((records + block.x - 1) / block.x));
+    if (key.size() == 16) aes128_kw_unwrap<<<grid, block>>>(d_in, d_out, records, d_status);
+    else aes256_kw_unwrap<<<grid, block>>>(d_in, d_out, records, d_status);
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaMemcpy(plain.data(), d_out, plain.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpy(status->data(), d_status, status->size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    CHECK_CUDA(cudaFree(d_status));
+    return plain;
+}
+
+std::vector<uint8_t> run_kwp_wrap(const std::vector<uint8_t> &key,
+                                  const std::vector<uint8_t> &plain) {
+    load_key(key);
+    const size_t records = plain.size() / 20;
+    std::vector<uint8_t> wrapped(records * 32);
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, plain.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, wrapped.size()));
+    CHECK_CUDA(cudaMemcpy(d_in, plain.data(), plain.size(), cudaMemcpyHostToDevice));
+    dim3 block(kThreads);
+    dim3 grid(static_cast<unsigned>((records + block.x - 1) / block.x));
+    if (key.size() == 16) aes128_kwp_wrap<<<grid, block>>>(d_in, d_out, records);
+    else aes256_kwp_wrap<<<grid, block>>>(d_in, d_out, records);
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaMemcpy(wrapped.data(), d_out, wrapped.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    return wrapped;
+}
+
+std::vector<uint8_t> run_kwp_unwrap(const std::vector<uint8_t> &key,
+                                    const std::vector<uint8_t> &wrapped,
+                                    std::vector<uint8_t> *status) {
+    load_key(key);
+    const size_t records = wrapped.size() / 32;
+    std::vector<uint8_t> plain(records * 20);
+    status->assign(records, 0);
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    uint8_t *d_status = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, wrapped.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, plain.size()));
+    CHECK_CUDA(cudaMalloc(&d_status, status->size()));
+    CHECK_CUDA(cudaMemcpy(d_in, wrapped.data(), wrapped.size(), cudaMemcpyHostToDevice));
+    dim3 block(kThreads);
+    dim3 grid(static_cast<unsigned>((records + block.x - 1) / block.x));
+    if (key.size() == 16) aes128_kwp_unwrap<<<grid, block>>>(d_in, d_out, records, d_status);
+    else aes256_kwp_unwrap<<<grid, block>>>(d_in, d_out, records, d_status);
+    CHECK_CUDA(cudaDeviceSynchronize());
+    CHECK_CUDA(cudaMemcpy(plain.data(), d_out, plain.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpy(status->data(), d_status, status->size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    CHECK_CUDA(cudaFree(d_status));
+    return plain;
+}
+
 bool run_all() {
     bool ok = true;
     init_T_tables();
@@ -639,6 +735,34 @@ bool run_all() {
     ok &= expect_equal("XTS-128 decrypt", run_xts(xts128_key, xts_sector, xts128_cipher, true), xts_plain);
     ok &= expect_equal("XTS-256 encrypt", run_xts(xts256_key, xts_sector, xts_plain, false), xts256_cipher);
     ok &= expect_equal("XTS-256 decrypt", run_xts(xts256_key, xts_sector, xts256_cipher, true), xts_plain);
+
+    const auto kw_plain = hex_to_bytes("00112233445566778899aabbccddeeff");
+    const auto kwp_plain = hex_to_bytes("00112233445566778899aabbccddeeff00010203");
+    const auto kw128_key = hex_to_bytes("000102030405060708090a0b0c0d0e0f");
+    const auto kw256_key = hex_to_bytes("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+    const auto kw128_cipher = hex_to_bytes("1fa68b0a8112b447aef34bd8fb5a7b829d3e862371d2cfe5");
+    const auto kw256_cipher = hex_to_bytes("64e8c3f9ce0f5ba263e9777905818a2a93c8191e7d6e8ae7");
+    const auto kwp128_cipher = hex_to_bytes("8464eef50633e85287dbac88b75128321370db3601c246010f23c72f3e061ab8");
+    const auto kwp256_cipher = hex_to_bytes("2ec848c1a77981da003e3ce3b028c5e46ba5bebc032dce29eb892a57092d5c09");
+    ok &= expect_equal("AES-KW KW-128 wrap", run_kw_wrap(kw128_key, kw_plain), kw128_cipher);
+    std::vector<uint8_t> unwrap_status;
+    ok &= expect_equal("AES-KW KW-128 unwrap", run_kw_unwrap(kw128_key, kw128_cipher, &unwrap_status), kw_plain);
+    ok &= expect_equal("AES-KW KW-256 wrap", run_kw_wrap(kw256_key, kw_plain), kw256_cipher);
+    ok &= expect_equal("AES-KW KW-256 unwrap", run_kw_unwrap(kw256_key, kw256_cipher, &unwrap_status), kw_plain);
+    ok &= expect_equal("AES-KWP KWP-128 wrap", run_kwp_wrap(kw128_key, kwp_plain), kwp128_cipher);
+    ok &= expect_equal("AES-KWP KWP-128 unwrap", run_kwp_unwrap(kw128_key, kwp128_cipher, &unwrap_status), kwp_plain);
+    ok &= expect_equal("AES-KWP KWP-256 wrap", run_kwp_wrap(kw256_key, kwp_plain), kwp256_cipher);
+    ok &= expect_equal("AES-KWP KWP-256 unwrap", run_kwp_unwrap(kw256_key, kwp256_cipher, &unwrap_status), kwp_plain);
+
+    std::vector<uint8_t> tampered_kw = kw128_cipher;
+    tampered_kw[0] ^= 0x01;
+    (void)run_kw_unwrap(kw128_key, tampered_kw, &unwrap_status);
+    if (!unwrap_status.empty() && unwrap_status[0] == 0) {
+        std::printf("KAT PASS AES-KW tamper unwrap rejected\n");
+    } else {
+        std::fprintf(stderr, "KAT FAIL AES-KW tamper unwrap accepted\n");
+        ok = false;
+    }
 
     return ok;
 }

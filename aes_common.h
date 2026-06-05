@@ -66,6 +66,18 @@ extern __device__ __constant__ uint32_t d_xtsTweakRoundKeys[60];  // second XTS 
     __global__ void aes256_xts_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *tweak);
     __global__ void aes256_xts_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *tweak);
 
+    // AES-KW fixed-record benchmark scope: 16-byte key data -> 24-byte wrapped data.
+    __global__ void aes128_kw_wrap(const uint8_t *in, uint8_t *out, size_t nRecords);
+    __global__ void aes128_kw_unwrap(const uint8_t *in, uint8_t *out, size_t nRecords, uint8_t *status);
+    __global__ void aes256_kw_wrap(const uint8_t *in, uint8_t *out, size_t nRecords);
+    __global__ void aes256_kw_unwrap(const uint8_t *in, uint8_t *out, size_t nRecords, uint8_t *status);
+
+    // AES-KWP fixed-record benchmark scope: 20-byte key data -> 32-byte wrapped data.
+    __global__ void aes128_kwp_wrap(const uint8_t *in, uint8_t *out, size_t nRecords);
+    __global__ void aes128_kwp_unwrap(const uint8_t *in, uint8_t *out, size_t nRecords, uint8_t *status);
+    __global__ void aes256_kwp_wrap(const uint8_t *in, uint8_t *out, size_t nRecords);
+    __global__ void aes256_kwp_unwrap(const uint8_t *in, uint8_t *out, size_t nRecords, uint8_t *status);
+
 
 // ----------------------------------------------------------
 // Host utility functions for key expansion and constant memory setup
