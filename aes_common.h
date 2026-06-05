@@ -53,6 +53,12 @@ extern __device__ __constant__ uint32_t d_roundKeys[60];  // supports AES-256 (m
     __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut);
     __global__ void aes256_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t nBlocks, const uint8_t *iv, const uint8_t *tag, uint8_t *tagOut);
 
+    // CCM benchmark scope: 12-byte nonce, empty AAD, 16-byte tag, full 16-byte blocks.
+    __global__ void aes128_ccm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *nonce, uint8_t *tagOut);
+    __global__ void aes128_ccm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t nBlocks, const uint8_t *nonce, const uint8_t *tag, uint8_t *tagOut);
+    __global__ void aes256_ccm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *nonce, uint8_t *tagOut);
+    __global__ void aes256_ccm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t nBlocks, const uint8_t *nonce, const uint8_t *tag, uint8_t *tagOut);
+
 
 // ----------------------------------------------------------
 // Host utility functions for key expansion and constant memory setup

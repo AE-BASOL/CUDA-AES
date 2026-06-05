@@ -39,6 +39,10 @@ CPU rows use `timing_scope=cpu_baseline`. They are OpenSSL EVP comparison rows, 
 
 Future end-to-end rows must use a distinct `timing_scope`.
 
+## Authenticated Encryption Modes
+
+GCM and CCM rows include authentication tag work in the measured kernel. Current CCM benchmark scope is 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte payload blocks. These rows should not be interpreted as a complete AEAD API with arbitrary AAD, partial-block payloads, variable tag lengths, or variable nonce lengths.
+
 ## Feedback Modes
 
 CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their benchmark rows are useful for reproducibility and mode coverage, but they should not be read as naturally parallel CTR-like throughput. CBC encryption in particular is dependency-bound; CBC decryption can expose more block-level parallelism because each plaintext block depends on the current and previous ciphertext blocks. CFB rows use full-block CFB-128 segment semantics.
@@ -50,3 +54,4 @@ CBC, CFB, and OFB are feedback modes with per-message dependency chains. Their b
 - Do not treat the project as production cryptography software.
 - Interpret CBC, CFB, and OFB feedback-mode throughput with their dependency chains in mind.
 - GCM benchmark scope matches the current correctness scope: 96-bit IV, empty AAD, full blocks.
+- CCM benchmark scope matches the current correctness scope: 96-bit nonce, empty AAD, 16-byte tag, full blocks.

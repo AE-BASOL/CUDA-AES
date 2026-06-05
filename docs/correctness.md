@@ -30,6 +30,9 @@ Current deterministic known-answer tests cover:
 - AES-256 GCM ciphertext/tag/decrypt tag
 - GCM wrong-tag rejection
 - GCM tampered-ciphertext rejection
+- AES-128 CCM ciphertext/tag/decrypt tag
+- AES-256 CCM ciphertext/tag/decrypt tag
+- CCM wrong-tag rejection
 
 ## GCM Scope
 
@@ -42,6 +45,19 @@ Current GCM correctness scope is:
 - wrong-tag and tampered-ciphertext rejection
 
 Non-empty AAD, partial-block behavior, and a production AEAD API are future work.
+
+## CCM Scope
+
+Current CCM correctness scope is:
+
+- 96-bit nonce
+- empty AAD
+- 16-byte authentication tag
+- full 16-byte blocks
+- ciphertext/tag verification
+- wrong-tag rejection
+
+Non-empty AAD, partial-block behavior, variable nonce lengths, variable tag lengths, and a production AEAD API are future work.
 
 ## Confidentiality Mode Scope
 

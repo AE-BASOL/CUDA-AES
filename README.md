@@ -16,8 +16,9 @@ Implemented in the canonical top-level build:
 | OFB | Yes | Yes | Yes | Yes | Confidentiality-only chained keystream mode |
 | CTR | Yes | Yes | Yes | Yes | 96-bit IV/counter helper in benchmark |
 | GCM | Yes | Yes | Yes | Yes | 96-bit IV, empty AAD, full blocks |
+| CCM | Yes | Yes | Yes | Yes | 96-bit nonce, empty AAD, 16-byte tag, full blocks |
 
-Planned coverage includes CCM, XTS-AES, AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
+Planned coverage includes XTS-AES, AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
 
 ## Quick Start
 
@@ -114,6 +115,7 @@ Use repeated runs, fixed GPU clocks, persistence-mode notes, and a quiet system 
 
 - Runtime CMake/CTest verification in the current development shell is blocked until `nvcc` can find `cl.exe`.
 - GCM coverage is limited to 96-bit IV, empty AAD, and full 16-byte blocks.
+- CCM coverage is limited to 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte blocks.
 - Partial-block behavior and non-empty AAD are not benchmarked in v1.
 - CPU baseline rows are not a controlled CPU performance study.
 - This project does not claim to be the fastest GPU AES implementation.

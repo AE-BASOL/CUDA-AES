@@ -322,6 +322,81 @@ std::vector<uint8_t> run_gcm_decrypt(const std::vector<uint8_t> &key,
     return plain;
 }
 
+std::vector<uint8_t> run_ccm_encrypt(const std::vector<uint8_t> &key,
+                                     const std::vector<uint8_t> &nonce,
+                                     const std::vector<uint8_t> &plain,
+                                     std::vector<uint8_t> *tag) {
+    if (nonce.size() != 12) {
+        std::fprintf(stderr, "CCM nonce must be 12 bytes for the benchmark scope\n");
+        std::exit(EXIT_FAILURE);
+    }
+    load_key(key);
+    const size_t n_blocks = plain.size() / 16;
+    uint8_t *d_plain = nullptr;
+    uint8_t *d_cipher = nullptr;
+    uint8_t *d_nonce = nullptr;
+    uint8_t *d_tag = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_plain, plain.size()));
+    CHECK_CUDA(cudaMalloc(&d_cipher, plain.size()));
+    CHECK_CUDA(cudaMalloc(&d_nonce, nonce.size()));
+    CHECK_CUDA(cudaMalloc(&d_tag, 16));
+    CHECK_CUDA(cudaMemcpy(d_plain, plain.data(), plain.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_nonce, nonce.data(), nonce.size(), cudaMemcpyHostToDevice));
+    if (key.size() == 16) aes128_ccm_encrypt<<<1, kThreads>>>(d_plain, d_cipher, n_blocks, d_nonce, d_tag);
+    else aes256_ccm_encrypt<<<1, kThreads>>>(d_plain, d_cipher, n_blocks, d_nonce, d_tag);
+    CHECK_CUDA(cudaDeviceSynchronize());
+
+    std::vector<uint8_t> cipher(plain.size());
+    tag->assign(16, 0);
+    CHECK_CUDA(cudaMemcpy(cipher.data(), d_cipher, cipher.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpy(tag->data(), d_tag, tag->size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_plain));
+    CHECK_CUDA(cudaFree(d_cipher));
+    CHECK_CUDA(cudaFree(d_nonce));
+    CHECK_CUDA(cudaFree(d_tag));
+    return cipher;
+}
+
+std::vector<uint8_t> run_ccm_decrypt(const std::vector<uint8_t> &key,
+                                     const std::vector<uint8_t> &nonce,
+                                     const std::vector<uint8_t> &cipher,
+                                     const std::vector<uint8_t> &expected_tag,
+                                     std::vector<uint8_t> *computed_tag) {
+    if (nonce.size() != 12) {
+        std::fprintf(stderr, "CCM nonce must be 12 bytes for the benchmark scope\n");
+        std::exit(EXIT_FAILURE);
+    }
+    load_key(key);
+    const size_t n_blocks = cipher.size() / 16;
+    uint8_t *d_cipher = nullptr;
+    uint8_t *d_plain = nullptr;
+    uint8_t *d_nonce = nullptr;
+    uint8_t *d_tag_in = nullptr;
+    uint8_t *d_tag_out = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_cipher, cipher.size()));
+    CHECK_CUDA(cudaMalloc(&d_plain, cipher.size()));
+    CHECK_CUDA(cudaMalloc(&d_nonce, nonce.size()));
+    CHECK_CUDA(cudaMalloc(&d_tag_in, 16));
+    CHECK_CUDA(cudaMalloc(&d_tag_out, 16));
+    CHECK_CUDA(cudaMemcpy(d_cipher, cipher.data(), cipher.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_nonce, nonce.data(), nonce.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_tag_in, expected_tag.data(), expected_tag.size(), cudaMemcpyHostToDevice));
+    if (key.size() == 16) aes128_ccm_decrypt<<<1, kThreads>>>(d_cipher, d_plain, n_blocks, d_nonce, d_tag_in, d_tag_out);
+    else aes256_ccm_decrypt<<<1, kThreads>>>(d_cipher, d_plain, n_blocks, d_nonce, d_tag_in, d_tag_out);
+    CHECK_CUDA(cudaDeviceSynchronize());
+
+    std::vector<uint8_t> plain(cipher.size());
+    computed_tag->assign(16, 0);
+    CHECK_CUDA(cudaMemcpy(plain.data(), d_plain, plain.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaMemcpy(computed_tag->data(), d_tag_out, computed_tag->size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_cipher));
+    CHECK_CUDA(cudaFree(d_plain));
+    CHECK_CUDA(cudaFree(d_nonce));
+    CHECK_CUDA(cudaFree(d_tag_in));
+    CHECK_CUDA(cudaFree(d_tag_out));
+    return plain;
+}
+
 bool run_all() {
     bool ok = true;
     init_T_tables();
@@ -447,6 +522,43 @@ bool run_all() {
         ok = false;
     } else {
         std::printf("KAT PASS GCM-128 tampered ciphertext rejected\n");
+    }
+
+    const auto ccm_nonce = hex_to_bytes("101112131415161718191a1b");
+    const auto ccm_plain = hex_to_bytes(
+        "6bc1bee22e409f96e93d7e117393172a"
+        "ae2d8a571e03ac9c9eb76fac45af8e51");
+    const auto ccm128_cipher = hex_to_bytes(
+        "76c0f267fbe2820aad1470f1fb0340b0"
+        "d231bdebb290f27387ea727570ae567d");
+    const auto ccm128_tag = hex_to_bytes("ad5ea85fe260bfa769cea1bff028af7f");
+    const auto ccm256_cipher = hex_to_bytes(
+        "b3c2479fd407e32f7f2482e0c9dc89dd"
+        "70d77c6daa191fd1a1e8a0eb8020e1b2");
+    const auto ccm256_tag = hex_to_bytes("dd7f692954ea5b452323334990655935");
+
+    cipher = run_ccm_encrypt(ecb128_key, ccm_nonce, ccm_plain, &tag);
+    ok &= expect_equal("CCM-128 encrypt ciphertext", cipher, ccm128_cipher);
+    ok &= expect_equal("CCM-128 encrypt tag", tag, ccm128_tag);
+    plain = run_ccm_decrypt(ecb128_key, ccm_nonce, ccm128_cipher, ccm128_tag, &computed_tag);
+    ok &= expect_equal("CCM-128 decrypt plaintext", plain, ccm_plain);
+    ok &= expect_equal("CCM-128 decrypt tag", computed_tag, ccm128_tag);
+
+    cipher = run_ccm_encrypt(ecb256_key, ccm_nonce, ccm_plain, &tag);
+    ok &= expect_equal("CCM-256 encrypt ciphertext", cipher, ccm256_cipher);
+    ok &= expect_equal("CCM-256 encrypt tag", tag, ccm256_tag);
+    plain = run_ccm_decrypt(ecb256_key, ccm_nonce, ccm256_cipher, ccm256_tag, &computed_tag);
+    ok &= expect_equal("CCM-256 decrypt plaintext", plain, ccm_plain);
+    ok &= expect_equal("CCM-256 decrypt tag", computed_tag, ccm256_tag);
+
+    std::vector<uint8_t> wrong_ccm_tag = ccm128_tag;
+    wrong_ccm_tag[0] ^= 0x01;
+    plain = run_ccm_decrypt(ecb128_key, ccm_nonce, ccm128_cipher, wrong_ccm_tag, &computed_tag);
+    if (computed_tag == wrong_ccm_tag) {
+        std::fprintf(stderr, "KAT FAIL CCM-128 wrong tag was accepted\n");
+        ok = false;
+    } else {
+        std::printf("KAT PASS CCM-128 wrong tag rejected\n");
     }
 
     return ok;
