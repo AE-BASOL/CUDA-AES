@@ -44,8 +44,8 @@
 
 - [x] **MODE-01**: Reader can see a mode matrix covering ECB, CBC, CFB, OFB, CTR, GCM/GMAC, CCM, XTS-AES, AES-KW, and AES-KWP.
 - [x] **MODE-02**: Developer can run correctness tests and benchmarks for CBC mode.
-- [ ] **MODE-03**: Developer can run correctness tests and benchmarks for CFB mode.
-- [ ] **MODE-04**: Developer can run correctness tests and benchmarks for OFB mode.
+- [x] **MODE-03**: Developer can run correctness tests and benchmarks for CFB mode.
+- [x] **MODE-04**: Developer can run correctness tests and benchmarks for OFB mode.
 - [ ] **MODE-05**: Developer can run correctness tests and benchmarks for CCM mode.
 - [ ] **MODE-06**: Developer can run correctness tests and benchmarks for XTS-AES mode.
 - [ ] **MODE-07**: Developer can run correctness tests and benchmarks for AES-KW and AES-KWP key wrap modes.
@@ -128,8 +128,8 @@
 | DOCS-03 | Phase 4 | Complete |
 | DOCS-05 | Phase 4 | Complete |
 | MODE-02 | Phase 5 | Complete |
-| MODE-03 | Phase 5 | Pending |
-| MODE-04 | Phase 5 | Pending |
+| MODE-03 | Phase 5 | Complete |
+| MODE-04 | Phase 5 | Complete |
 | MODE-05 | Phase 6 | Pending |
 | MODE-06 | Phase 6 | Pending |
 | MODE-07 | Phase 6 | Pending |
