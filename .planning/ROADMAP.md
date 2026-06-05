@@ -158,6 +158,17 @@
 4. GCM/GMAC and CMAC are documented distinctly so encryption throughput and MAC/authentication throughput are not confused.
 5. The mode matrix shows implementation, test, benchmark, and documentation status for every tracked mode.
 
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `06-01` | 1 | CCM AES-128/AES-256 implementation, ciphertext/tag KAT coverage, benchmark dispatch, and AEAD parameter docs |
+| `06-02` | 2 | XTS-AES full-block data-unit implementation, KAT coverage, benchmark dispatch, and storage-sector docs |
+| `06-03` | 3 | AES-KW/AES-KWP wrap/unwrap implementation, tamper KAT coverage, benchmark dispatch, and key-wrap workload docs |
+| `06-04` | 4 | Public docs, mode matrix updates, GMAC/CMAC boundaries, verification evidence, and handoff |
+
+**Wave 2 blocked on Wave 1 completion. Wave 3 blocked on Wave 2 completion. Wave 4 blocked on Wave 3 completion.**
+
 ## Phase 7: Discoverability And SEO
 
 **Goal:** Optimize GitHub and web discoverability without compromising technical quality.

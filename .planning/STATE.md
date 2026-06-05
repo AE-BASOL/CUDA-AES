@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
+status: executing
 stopped_at: Phase 5 completed with source-level verification. Proceed to plan Phase 6.
-last_updated: "2026-06-05T11:45:11+03:00"
+last_updated: "2026-06-05T13:01:15.960Z"
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 15
+  total_plans: 19
   completed_plans: 15
-  percent: 62
+  percent: 79
 ---
 
 # Project State
@@ -58,8 +58,15 @@ Phase 6: Authenticated And Specialized Mode Expansion
 **Goal:** Add CCM, XTS-AES, AES-KW, AES-KWP, and document GMAC/CMAC boundaries.
 
 **Requirements:** MODE-05, MODE-06, MODE-07, MODE-08
-**Planning status:** Ready to plan
-**Plans:** Not planned yet
+**Planning status:** Ready to execute
+**Plans:** 4 plans in 4 waves
+
+| Plan | Wave | Focus |
+|------|------|-------|
+| `06-01` | 1 | CCM implementation, authenticated KATs, benchmark dispatch, and AEAD parameter docs |
+| `06-02` | 2 | XTS-AES implementation, full-block data-unit KATs, benchmark dispatch, and storage docs |
+| `06-03` | 3 | AES-KW/AES-KWP implementation, wrap/unwrap and tamper KATs, benchmark dispatch, and workload docs |
+| `06-04` | 4 | Documentation, GMAC/CMAC boundaries, verification evidence, and Phase 7 handoff |
 
 ## Carried Verification Debt
 
@@ -79,7 +86,7 @@ Stopped at: Phase 5 completed with source-level verification. Proceed to plan Ph
 
 ## Next Command
 
-`$gsd-plan-phase 6`
+`$gsd-execute-phase 6`
 
 ## Scope Note
 
