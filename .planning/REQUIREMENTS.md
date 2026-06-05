@@ -46,10 +46,10 @@
 - [x] **MODE-02**: Developer can run correctness tests and benchmarks for CBC mode.
 - [x] **MODE-03**: Developer can run correctness tests and benchmarks for CFB mode.
 - [x] **MODE-04**: Developer can run correctness tests and benchmarks for OFB mode.
-- [ ] **MODE-05**: Developer can run correctness tests and benchmarks for CCM mode.
-- [ ] **MODE-06**: Developer can run correctness tests and benchmarks for XTS-AES mode.
-- [ ] **MODE-07**: Developer can run correctness tests and benchmarks for AES-KW and AES-KWP key wrap modes.
-- [ ] **MODE-08**: Reader can distinguish encryption modes from authentication/MAC-only coverage such as GMAC and CMAC.
+- [x] **MODE-05**: Developer can run correctness tests and benchmarks for CCM mode.
+- [x] **MODE-06**: Developer can run correctness tests and benchmarks for XTS-AES mode.
+- [x] **MODE-07**: Developer can run correctness tests and benchmarks for AES-KW and AES-KWP key wrap modes.
+- [x] **MODE-08**: Reader can distinguish encryption modes from authentication/MAC-only coverage such as GMAC and CMAC.
 
 ### Documentation And SEO
 
@@ -130,10 +130,10 @@
 | MODE-02 | Phase 5 | Complete |
 | MODE-03 | Phase 5 | Complete |
 | MODE-04 | Phase 5 | Complete |
-| MODE-05 | Phase 6 | Pending |
-| MODE-06 | Phase 6 | Pending |
-| MODE-07 | Phase 6 | Pending |
-| MODE-08 | Phase 6 | Pending |
+| MODE-05 | Phase 6 | Complete |
+| MODE-06 | Phase 6 | Complete |
+| MODE-07 | Phase 6 | Complete |
+| MODE-08 | Phase 6 | Complete |
 | DOCS-04 | Phase 7 | Pending |
 | REPO-04 | Phase 8 | Pending |
 | MAINT-01 | Phase 8 | Pending |
@@ -148,4 +148,4 @@
 
 ---
 *Requirements defined: 2026-06-04*
-*Last updated: 2026-06-04 after Phase 4 completion*
+*Last updated: 2026-06-05 after Phase 6 completion*

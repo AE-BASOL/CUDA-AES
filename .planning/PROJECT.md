@@ -25,10 +25,11 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 - Phase 2 added deterministic known-answer tests for ECB, CTR, and GCM, plus GCM tag/authentication fixes at source level.
 - Phase 3 added reproducible benchmark metadata capture, stable raw CSV output, summary generation, methodology documentation, and CUDA event cleanup at source level.
 - Phase 4 added a public README/docs package, open-source governance files, citation metadata, issue/PR templates, an AES mode matrix, and legacy Tezcan provenance notes.
+- Phase 5 added CBC, CFB-128, and OFB source, KAT, benchmark dispatch, documentation, and verification evidence at source level.
+- Phase 6 added CCM, XTS-AES, AES-KW, AES-KWP source, KAT, benchmark dispatch, documentation, GMAC/CMAC boundary notes, and verification evidence at source level.
 
 ### Active
 
-- [ ] Plan and implement benchmark coverage beyond ECB/CTR/GCM for standard AES modes.
 - [ ] Improve discoverability for GitHub search, Google indexing, and technical readers searching for GPU AES benchmarks.
 - [ ] Package benchmark results as versioned releases with reproducibility notes.
 - [ ] Keep the repo alive with clear maintenance rules, roadmap, changelog, and contribution workflow.
@@ -43,7 +44,7 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 
 ## Context
 
-The repository is brownfield CUDA/C++ code. Current code is useful and now has public-facing documentation, governance files, a mode matrix, correctness docs, and benchmark methodology docs. Phase 5 should move from documentation into implementation by adding CBC, CFB, and OFB coverage.
+The repository is brownfield CUDA/C++ code. Current code is useful and now has public-facing documentation, governance files, a mode matrix, correctness docs, benchmark methodology docs, and source-level coverage for ECB, CBC, CFB-128, OFB, CTR, GCM, CCM, XTS-AES, AES-KW, and AES-KWP. Phase 7 should improve discoverability without adding unsupported benchmark claims.
 
 A main-branch code review on 2026-06-04 found three high-severity AES-GCM blockers: decrypt accepts unauthenticated ciphertext, IV broadcast uses warp-local `__shfl_sync` incorrectly for a 256-thread block, and tag generation is not standard AES-GCM because it omits the length block and final `E(K, J0)` XOR. Phase 2 fixed these at source level for the supported 96-bit-IV, empty-AAD, full-block GCM scope. Runtime CMake/CTest verification still needs a shell where `nvcc` can find `cl.exe`.
 
@@ -81,8 +82,8 @@ Current external best-practice signals:
 | Use reproducible benchmark standard | Prestige depends on trust, not only peak throughput numbers. | Active |
 | Treat library/API use as out of scope for v1 | Avoid implying production cryptographic safety before tests and API hardening exist. | Pending |
 | Build SEO through documentation quality | Search engines and developers both reward clear, useful, crawlable content. | Pending |
-| Plan full AES mode coverage | The prestige target is stronger if the roadmap covers all important AES modes, not only current ECB/CTR/GCM code. | Pending |
-| Treat GCM review findings as blockers | Public benchmark credibility depends on standard AES-GCM correctness and authentication semantics. | Pending |
+| Plan full AES mode coverage | The prestige target is stronger if the roadmap covers all important AES modes, not only current ECB/CTR/GCM code. | Active |
+| Treat GCM review findings as blockers | Public benchmark credibility depends on standard AES-GCM correctness and authentication semantics. | Active |
 
 ## Evolution
 
@@ -102,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state.
 
 ---
-*Last updated: 2026-06-04 after Phase 4 completion*
+*Last updated: 2026-06-05 after Phase 6 completion*
