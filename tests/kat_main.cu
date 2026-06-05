@@ -187,6 +187,74 @@ std::vector<uint8_t> run_cbc(const std::vector<uint8_t> &key,
     return out;
 }
 
+std::vector<uint8_t> run_cfb(const std::vector<uint8_t> &key,
+                             const std::vector<uint8_t> &iv,
+                             const std::vector<uint8_t> &input,
+                             bool decrypt) {
+    if (iv.size() != 16) {
+        std::fprintf(stderr, "CFB-128 IV must be 16 bytes\n");
+        std::exit(EXIT_FAILURE);
+    }
+    load_key(key);
+    const size_t n_blocks = input.size() / 16;
+
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    uint8_t *d_iv = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, input.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, input.size()));
+    CHECK_CUDA(cudaMalloc(&d_iv, iv.size()));
+    CHECK_CUDA(cudaMemcpy(d_in, input.data(), input.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_iv, iv.data(), iv.size(), cudaMemcpyHostToDevice));
+    dim3 block(kThreads);
+    dim3 grid(static_cast<unsigned>((n_blocks + block.x - 1) / block.x));
+    if (key.size() == 16 && !decrypt) aes128_cfb_encrypt<<<1, 1>>>(d_in, d_out, n_blocks, d_iv);
+    else if (key.size() == 16) aes128_cfb_decrypt<<<grid, block>>>(d_in, d_out, n_blocks, d_iv);
+    else if (!decrypt) aes256_cfb_encrypt<<<1, 1>>>(d_in, d_out, n_blocks, d_iv);
+    else aes256_cfb_decrypt<<<grid, block>>>(d_in, d_out, n_blocks, d_iv);
+    CHECK_CUDA(cudaDeviceSynchronize());
+
+    std::vector<uint8_t> out(input.size());
+    CHECK_CUDA(cudaMemcpy(out.data(), d_out, out.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    CHECK_CUDA(cudaFree(d_iv));
+    return out;
+}
+
+std::vector<uint8_t> run_ofb(const std::vector<uint8_t> &key,
+                             const std::vector<uint8_t> &iv,
+                             const std::vector<uint8_t> &input,
+                             bool decrypt) {
+    if (iv.size() != 16) {
+        std::fprintf(stderr, "OFB IV must be 16 bytes\n");
+        std::exit(EXIT_FAILURE);
+    }
+    load_key(key);
+    const size_t n_blocks = input.size() / 16;
+
+    uint8_t *d_in = nullptr;
+    uint8_t *d_out = nullptr;
+    uint8_t *d_iv = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_in, input.size()));
+    CHECK_CUDA(cudaMalloc(&d_out, input.size()));
+    CHECK_CUDA(cudaMalloc(&d_iv, iv.size()));
+    CHECK_CUDA(cudaMemcpy(d_in, input.data(), input.size(), cudaMemcpyHostToDevice));
+    CHECK_CUDA(cudaMemcpy(d_iv, iv.data(), iv.size(), cudaMemcpyHostToDevice));
+    if (key.size() == 16 && !decrypt) aes128_ofb_encrypt<<<1, 1>>>(d_in, d_out, n_blocks, d_iv);
+    else if (key.size() == 16) aes128_ofb_decrypt<<<1, 1>>>(d_in, d_out, n_blocks, d_iv);
+    else if (!decrypt) aes256_ofb_encrypt<<<1, 1>>>(d_in, d_out, n_blocks, d_iv);
+    else aes256_ofb_decrypt<<<1, 1>>>(d_in, d_out, n_blocks, d_iv);
+    CHECK_CUDA(cudaDeviceSynchronize());
+
+    std::vector<uint8_t> out(input.size());
+    CHECK_CUDA(cudaMemcpy(out.data(), d_out, out.size(), cudaMemcpyDeviceToHost));
+    CHECK_CUDA(cudaFree(d_in));
+    CHECK_CUDA(cudaFree(d_out));
+    CHECK_CUDA(cudaFree(d_iv));
+    return out;
+}
+
 std::vector<uint8_t> run_gcm_encrypt(const std::vector<uint8_t> &key,
                                      const std::vector<uint8_t> &iv,
                                      const std::vector<uint8_t> &plain,
@@ -305,6 +373,36 @@ bool run_all() {
     ok &= expect_equal("CBC-128 decrypt", run_cbc(ecb128_key, cbc_iv, cbc128_cipher, true), cbc_plain);
     ok &= expect_equal("CBC-256 encrypt", run_cbc(ecb256_key, cbc_iv, cbc_plain, false), cbc256_cipher);
     ok &= expect_equal("CBC-256 decrypt", run_cbc(ecb256_key, cbc_iv, cbc256_cipher, true), cbc_plain);
+
+    const auto cfb128_cipher = hex_to_bytes(
+        "3b3fd92eb72dad20333449f8e83cfb4a"
+        "c8a64537a0b3a93fcde3cdad9f1ce58b"
+        "26751f67a3cbb140b1808cf187a4f4df"
+        "c04b05357c5d1c0eeac4c66f9ff7f2e6");
+    const auto cfb256_cipher = hex_to_bytes(
+        "dc7e84bfda79164b7ecd8486985d3860"
+        "39ffed143b28b1c832113c6331e5407b"
+        "df10132415e54b92a13ed0a8267ae2f9"
+        "75a385741ab9cef82031623d55b1e471");
+    ok &= expect_equal("CFB-128 encrypt", run_cfb(ecb128_key, cbc_iv, cbc_plain, false), cfb128_cipher);
+    ok &= expect_equal("CFB-128 decrypt", run_cfb(ecb128_key, cbc_iv, cfb128_cipher, true), cbc_plain);
+    ok &= expect_equal("CFB-256 encrypt", run_cfb(ecb256_key, cbc_iv, cbc_plain, false), cfb256_cipher);
+    ok &= expect_equal("CFB-256 decrypt", run_cfb(ecb256_key, cbc_iv, cfb256_cipher, true), cbc_plain);
+
+    const auto ofb128_cipher = hex_to_bytes(
+        "3b3fd92eb72dad20333449f8e83cfb4a"
+        "7789508d16918f03f53c52dac54ed825"
+        "9740051e9c5fecf64344f7a82260edcc"
+        "304c6528f659c77866a510d9c1d6ae5e");
+    const auto ofb256_cipher = hex_to_bytes(
+        "dc7e84bfda79164b7ecd8486985d3860"
+        "4febdc6740d20b3ac88f6ad82a4fb08d"
+        "71ab47a086e86eedf39d1c5bba97c408"
+        "0126141d67f37be8538f5a8be740e484");
+    ok &= expect_equal("OFB-128 encrypt", run_ofb(ecb128_key, cbc_iv, cbc_plain, false), ofb128_cipher);
+    ok &= expect_equal("OFB-128 decrypt", run_ofb(ecb128_key, cbc_iv, ofb128_cipher, true), cbc_plain);
+    ok &= expect_equal("OFB-256 encrypt", run_ofb(ecb256_key, cbc_iv, cbc_plain, false), ofb256_cipher);
+    ok &= expect_equal("OFB-256 decrypt", run_ofb(ecb256_key, cbc_iv, ofb256_cipher, true), cbc_plain);
 
     const auto zero128_key = hex_to_bytes("00000000000000000000000000000000");
     const auto zero256_key = hex_to_bytes("0000000000000000000000000000000000000000000000000000000000000000");
