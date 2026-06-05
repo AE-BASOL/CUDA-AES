@@ -11,10 +11,13 @@ Implemented in the canonical top-level build:
 | Mode | AES-128 | AES-256 | Correctness tests | Benchmark rows | Notes |
 |------|---------|---------|-------------------|----------------|-------|
 | ECB | Yes | Yes | Yes | Yes | NIST-style known-answer coverage |
+| CBC | Yes | Yes | Yes | Yes | Confidentiality-only feedback mode |
+| CFB | Yes | Yes | Yes | Yes | CFB-128 full-block segment scope |
+| OFB | Yes | Yes | Yes | Yes | Confidentiality-only chained keystream mode |
 | CTR | Yes | Yes | Yes | Yes | 96-bit IV/counter helper in benchmark |
 | GCM | Yes | Yes | Yes | Yes | 96-bit IV, empty AAD, full blocks |
 
-Planned coverage includes CBC, CFB, OFB, CCM, XTS-AES, AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
+Planned coverage includes CCM, XTS-AES, AES-KW, AES-KWP, and distinct GMAC/CMAC authentication benchmarking.
 
 ## Quick Start
 
@@ -91,6 +94,8 @@ schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,
 ## Methodology Summary
 
 Benchmark results are only meaningful after deterministic correctness tests pass. The GPU timing scope is currently `kernel_only`, which excludes allocation, host-to-device copy, device-to-host copy, output validation, and summary generation. Do not compare kernel-only rows against future end-to-end rows without preserving `timing_scope`.
+
+ECB, CBC, CFB, OFB, and CTR are confidentiality-only modes; they do not authenticate ciphertext. CBC, CFB, and OFB also have feedback dependencies, so their rows should not be interpreted as CTR-like parallel throughput.
 
 Use repeated runs, fixed GPU clocks, persistence-mode notes, and a quiet system when comparing throughput numbers. Publish raw CSV files and generated summaries together.
 

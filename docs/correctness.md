@@ -20,6 +20,12 @@ Current deterministic known-answer tests cover:
 - AES-256 ECB encrypt/decrypt
 - AES-128 CTR encrypt/decrypt
 - AES-256 CTR encrypt/decrypt
+- AES-128 CBC encrypt/decrypt
+- AES-256 CBC encrypt/decrypt
+- AES-128 CFB-128 encrypt/decrypt
+- AES-256 CFB-128 encrypt/decrypt
+- AES-128 OFB encrypt/decrypt
+- AES-256 OFB encrypt/decrypt
 - AES-128 GCM ciphertext/tag/decrypt tag
 - AES-256 GCM ciphertext/tag/decrypt tag
 - GCM wrong-tag rejection
@@ -37,6 +43,10 @@ Current GCM correctness scope is:
 
 Non-empty AAD, partial-block behavior, and a production AEAD API are future work.
 
+## Confidentiality Mode Scope
+
+ECB, CBC, CFB, OFB, and CTR are confidentiality-only modes. They do not provide authentication. Phase 5 CFB coverage uses CFB-128 full-block segment semantics only; smaller CFB segment sizes are not part of the current KAT or benchmark scope.
+
 ## Environment Limitation
 
 In the current shell, runtime CMake/CTest verification is blocked because `nvcc` cannot find the Visual Studio host compiler `cl.exe`. Run from a Visual Studio Developer Command Prompt or pass:
@@ -46,4 +56,3 @@ In the current shell, runtime CMake/CTest verification is blocked because `nvcc`
 ```
 
 This is tracked as environment-limited verification debt, not a source-level correctness failure.
-
