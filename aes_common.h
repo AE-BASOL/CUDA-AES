@@ -38,6 +38,16 @@ extern __device__ __constant__ uint32_t d_roundKeys[60];  // supports AES-256 (m
     __global__ void aes256_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
     __global__ void aes256_cbc_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
 
+    __global__ void aes128_cfb_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+    __global__ void aes128_cfb_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+    __global__ void aes256_cfb_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+    __global__ void aes256_cfb_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+
+    __global__ void aes128_ofb_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+    __global__ void aes128_ofb_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+    __global__ void aes256_ofb_encrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+    __global__ void aes256_ofb_decrypt(const uint8_t *in, uint8_t *out, size_t nBlocks, const uint8_t *iv);
+
     __global__ void aes128_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut);
     __global__ void aes128_gcm_decrypt(const uint8_t *cipher, uint8_t *plain, size_t nBlocks, const uint8_t *iv, const uint8_t *tag, uint8_t *tagOut);
     __global__ void aes256_gcm_encrypt(const uint8_t *plain, uint8_t *cipher, size_t nBlocks, const uint8_t *iv, uint8_t *tagOut);
