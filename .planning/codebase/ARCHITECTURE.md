@@ -26,13 +26,16 @@ The primary system is a single-process native benchmark executable. Host code in
 
 - `main.cu` is the orchestration, validation, benchmarking, and reporting layer.
 - `aes_common.h` is the shared contract between host orchestration and kernel implementations.
-- `aes_tables.cu` owns AES lookup tables, inverse tables, round-key storage, and host key expansion.
+- `aes_tables.cu` owns AES lookup tables, inverse tables, primary round-key storage, XTS tweak round-key storage, and host key expansion.
 - `aes128_ecb.cu` and `aes256_ecb.cu` implement AES ECB encrypt/decrypt kernels.
 - `aes128_cbc.cu` and `aes256_cbc.cu` implement AES CBC encrypt/decrypt kernels.
 - `aes128_cfb.cu` and `aes256_cfb.cu` implement AES CFB-128 encrypt/decrypt kernels.
 - `aes128_ofb.cu` and `aes256_ofb.cu` implement AES OFB encrypt/decrypt kernels.
 - `aes128_ctr.cu` and `aes256_ctr.cu` implement AES CTR encrypt/decrypt kernels.
 - `aes128_gcm.cu` and `aes256_gcm.cu` implement AES GCM encrypt/decrypt kernels.
+- `aes128_ccm.cu` and `aes256_ccm.cu` implement benchmark-scoped AES CCM encrypt/decrypt kernels.
+- `aes128_xts.cu` and `aes256_xts.cu` implement full-block XTS-AES encrypt/decrypt kernels.
+- `aes128_kw.cu` and `aes256_kw.cu` implement AES-KW and AES-KWP wrap/unwrap kernels for fixed-size key-wrap records.
 - `aes_block_device.cuh` provides shared device AES block encrypt/decrypt helpers for feedback modes.
 - `profiling_helpers.h` abstracts optional NVTX range markers.
 - `v3/` is a duplicated benchmark variant with small benchmark-loop differences.
@@ -43,6 +46,7 @@ The primary system is a single-process native benchmark executable. Host code in
 - AES block data is represented as byte buffers on the host and device.
 - Kernel modules commonly reinterpret block data as `uint4`, `uint32_t*`, or `uint64_t*` for vectorized or word-level operations.
 - AES round keys are expanded on the host and stored in device constant memory `d_roundKeys`.
+- XTS-AES uses a second host-expanded tweak key schedule stored in device constant memory `d_xtsTweakRoundKeys`.
 - S-boxes and T/U tables live in device constant memory and are declared in `aes_common.h`.
 
 ## GPU Execution Model
@@ -52,6 +56,9 @@ The primary system is a single-process native benchmark executable. Host code in
 - CBC and CFB decryption can expose block-level parallelism because each block can read the current and previous ciphertext blocks.
 - CTR kernels generate per-block keystream from IV/counter state and XOR with input.
 - GCM kernels combine CTR encryption/decryption with GHASH-like tag generation in a single kernel.
+- CCM kernels use benchmark-scoped CBC-MAC plus CTR processing with 96-bit nonce, empty AAD, 16-byte tag, and full-block payload assumptions.
+- XTS-AES kernels use two key schedules, a 16-byte sector tweak, and full 16-byte block data units. Ciphertext stealing is not implemented.
+- AES-KW and AES-KWP kernels process fixed-size key-wrap records. AES-KW wraps 16-byte key data to 24-byte records; AES-KWP wraps 20-byte key data to 32-byte records.
 - The top-level benchmark uses `THREADS_PER_BLOCK = 256` in `main.cu`.
 - The legacy implementation uses `BLOCKS = 1024` and `THREADS = 1024` in `cihangirTezcanAESimplementation/AES_final.h`.
 
@@ -90,5 +97,7 @@ The code contains commented-out `getopt_long` support for `--block N`; manual pa
 - Only one executable target is modeled at the top level.
 - There is no library target for kernel modules, so reuse currently happens by source duplication rather than linkable components.
 - Device constants are global process state. `init_roundKeys()` overwrites the active key schedule before each mode run.
-- The implementation assumes 16-byte block-aligned sizes in the benchmark size list.
+- Most streaming/block modes assume 16-byte block-aligned sizes in the benchmark size list. AES-KW and AES-KWP use fixed record-size batching rather than streaming buffers.
 - GCM code is optimized for benchmark experimentation, not a complete general-purpose AEAD API with AAD and robust tag verification semantics.
+- CCM has the same benchmark-suite constraint: current coverage is not a complete AEAD API with arbitrary AAD, nonce lengths, tag lengths, or partial blocks.
+- GMAC and CMAC are documented boundaries for future authentication/MAC benchmarking, not implemented encryption modes in the canonical executable.

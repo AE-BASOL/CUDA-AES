@@ -18,7 +18,7 @@ Run CTest before interpreting benchmark output:
 ctest --test-dir build --output-on-failure
 ```
 
-The CTest `CudaAesKat` target covers ECB, CBC, CFB-128, OFB, CTR, and GCM known-answer checks for AES-128 and AES-256. GCM scope is 96-bit IV, empty AAD, and full 16-byte blocks.
+The CTest `CudaAesKat` target covers ECB, CBC, CFB-128, OFB, CTR, GCM, CCM, XTS-AES, AES-KW, and AES-KWP known-answer checks for AES-128 and AES-256. GCM scope is 96-bit IV, empty AAD, and full 16-byte blocks. CCM scope is 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte blocks.
 
 ## Reproducibility Command
 
@@ -70,11 +70,18 @@ The summary groups by device, cipher, operation, block size, and `timing_scope`,
 - Keep raw CSV and summary output together.
 - Record fixed clocks and persistence mode manually when publishing results.
 - Keep `kernel_only`, `cpu_baseline`, and any future `end_to_end` rows separate.
+- Interpret CCM rows as authenticated-encryption rows with nonce/tag/AAD assumptions.
+- Interpret XTS-AES rows as storage-sector confidentiality rows with a 16-byte sector tweak and no authentication.
+- Interpret AES-KW and AES-KWP rows as fixed-record key-wrap workloads, not bulk encryption throughput.
 
 ## Limitations
 
 - GPU timing is currently kernel-only and excludes allocation and host/device transfers.
 - CPU baseline uses OpenSSL EVP but does not pin CPU frequency or affinity.
 - GCM benchmark scope follows Phase 2 correctness scope: 96-bit IV, empty AAD, full blocks.
+- CCM benchmark scope is 96-bit nonce, empty AAD, 16-byte tag, and full blocks.
+- XTS-AES benchmark scope is full 16-byte blocks with a 16-byte sector tweak; ciphertext stealing is not implemented.
+- AES-KW and AES-KWP benchmark scope is fixed-size batched key-wrap records. These modes currently emit GPU rows only, without CPU baseline rows.
+- GMAC and CMAC are authentication/MAC-only future workloads and should not be mixed with encryption throughput rows.
 - CBC, CFB, and OFB rows are feedback-mode coverage and should not be interpreted as CTR-like natural parallel throughput. CFB rows use CFB-128 full-block segment semantics.
 - Runtime verification in the current shell is blocked until `cl.exe` is available to `nvcc`.

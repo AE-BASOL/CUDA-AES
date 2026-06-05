@@ -14,9 +14,11 @@ Before planning or editing, read:
 
 ## Current Priority
 
-Phase 5 execution is complete at source level: CBC, CFB-128, and OFB have AES-128/AES-256 source, KAT, benchmark, and documentation coverage. Runtime CMake/CTest remains blocked in this shell until `nvcc` can find `cl.exe`.
+Phase 6 execution is complete at source level: CCM, XTS-AES, AES-KW, and AES-KWP have AES-128/AES-256 source, KAT, benchmark dispatch, and documentation coverage. GMAC and CMAC are documented as authentication/MAC-only boundaries, not encryption throughput modes.
 
-Next priority is Phase 6: authenticated and specialized mode expansion for CCM, XTS-AES, AES-KW, AES-KWP, and GMAC/CMAC boundary documentation.
+Runtime CMake/CTest remains blocked in this shell until `nvcc` can find `cl.exe`. Close this verification debt from a Visual Studio Developer Command Prompt or by passing `-DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>`.
+
+Next priority is Phase 7: discoverability and SEO for CUDA AES / GPU AES benchmark searches, after preserving the Phase 6 runtime verification caveat.
 
 Do not prioritize SEO copy, benchmark claims, or release polish before build reproducibility and correctness are trustworthy.
 

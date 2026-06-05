@@ -35,6 +35,14 @@ The repository now has a small CTest-registered known-answer-test executable for
 - GCM-256 ciphertext/tag/decrypt tag
 - GCM wrong-tag rejection
 - GCM tampered-ciphertext rejection
+- CCM-128 ciphertext/tag/decrypt tag
+- CCM-256 ciphertext/tag/decrypt tag
+- CCM wrong-tag rejection
+- XTS-AES-128 full-block encrypt/decrypt
+- XTS-AES-256 full-block encrypt/decrypt
+- AES-KW AES-128/AES-256 wrap/unwrap
+- AES-KWP AES-128/AES-256 wrap/unwrap
+- AES-KW tamper unwrap rejection
 
 Run it with:
 
@@ -42,7 +50,9 @@ Run it with:
 ctest --test-dir build --output-on-failure
 ```
 
-The GCM correctness scope is 96-bit IV, empty AAD, and full 16-byte blocks. Broader AEAD API coverage, partial-block behavior, and non-empty AAD are future work.
+The GCM correctness scope is 96-bit IV, empty AAD, and full 16-byte blocks. The CCM correctness scope is 96-bit nonce, empty AAD, 16-byte tag, and full 16-byte blocks. Broader AEAD API coverage, partial-block behavior, and non-empty AAD are future work.
+
+XTS-AES coverage is full 16-byte blocks with a 16-byte sector tweak; ciphertext stealing is not implemented. AES-KW and AES-KWP coverage uses fixed key-wrap record shapes rather than streaming buffers.
 
 ## Embedded Correctness Checks
 
@@ -69,13 +79,14 @@ The executable supports small focused debug paths:
 
 Top-level `main.cu` benchmarks:
 
-- Modes: `ecb-128`, `ecb-256`, `cbc-128`, `cbc-256`, `cfb-128`, `cfb-256`, `ofb-128`, `ofb-256`, `ctr-128`, `ctr-256`, `gcm-128`, and `gcm-256`.
+- Modes: `ecb-128`, `ecb-256`, `cbc-128`, `cbc-256`, `cfb-128`, `cfb-256`, `ofb-128`, `ofb-256`, `ctr-128`, `ctr-256`, `gcm-128`, `gcm-256`, `ccm-128`, `ccm-256`, `xts-128`, `xts-256`, `kw-128`, `kw-256`, `kwp-128`, and `kwp-256`.
 - Sizes: 1 MiB, 10 MiB, 100 MiB, and 1 GiB.
 - Runs: 5 per mode/size combination.
 - Operations: encryption by default, decryption when `--decrypt` is supplied.
 - Configurable smoke parameters: `--runs N`, `--sizes bytes[,bytes]`, and `--bench-dir PATH`.
 - Raw output schema version: `phase3.v1`.
 - GPU rows use `timing_scope=kernel_only`; CPU rows use `timing_scope=cpu_baseline`.
+- AES-KW and AES-KWP currently emit GPU wrap/unwrap rows only; no OpenSSL CPU baseline rows are emitted for these key-wrap workloads yet.
 - `run_metadata.csv` captures command line, run count, selected sizes, OS/compiler hints, CUDA runtime/driver versions, GPU model, compute capability, and clocks/persistence note.
 
 `v3/main.cu` benchmarks the same modes but uses 3 runs and omits the 1 GiB size.
@@ -122,7 +133,11 @@ The current CMake files are Windows/MSVC-oriented, while the README uses Linux-s
 ## Test Gaps
 
 - No tests for partial block handling; benchmark sizes and Phase 2 KATs are block-aligned.
-- No non-empty AAD coverage for GCM.
+- No non-empty AAD coverage for GCM or CCM.
+- No CCM variable nonce/tag-length coverage.
+- No XTS ciphertext-stealing coverage.
+- No variable-size AES-KW/AES-KWP record coverage beyond the current fixed benchmark shapes.
+- No standalone GMAC or CMAC tests; those remain future authentication/MAC workload coverage.
 - No memory checker or sanitizer configuration.
 - No CI build matrix across CUDA versions, host compilers, or GPU architectures.
 - No tests covering the legacy `cihangirTezcanAESimplementation/` executable.
