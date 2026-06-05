@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 4 completed and committed. Proceed to plan Phase 5.
-last_updated: "2026-06-04T15:54:33+03:00"
+status: ready_to_execute
+stopped_at: Phase 5 planned. Proceed to execute Phase 5.
+last_updated: "2026-06-05T11:17:06+03:00"
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 12
+  total_plans: 15
   completed_plans: 12
-  percent: 50
+  percent: 80
 ---
 
 # Project State
@@ -57,8 +57,14 @@ Phase 5: Confidentiality Mode Expansion
 **Goal:** Add the missing SP 800-38A confidentiality modes: CBC, CFB, and OFB.
 
 **Requirements:** MODE-02, MODE-03, MODE-04
-**Planning status:** Ready to plan
-**Plans:** Not planned yet
+**Planning status:** Ready to execute
+**Plans:** 3 plans in 3 waves
+
+| Plan | Wave | Focus |
+|------|------|-------|
+| `05-01` | 1 | CBC implementation, KATs, and benchmark dispatch |
+| `05-02` | 2 | CFB-128 and OFB implementation, KATs, and benchmark dispatch |
+| `05-03` | 3 | Documentation, verification evidence, and Phase 6 handoff |
 
 ## Carried Verification Debt
 
@@ -68,16 +74,16 @@ Phase 5: Confidentiality Mode Expansion
 
 ## Session Continuity
 
-Last session: 2026-06-04T15:54:33+03:00
-Stopped at: Phase 4 completed and committed. Proceed to plan Phase 5.
+Last session: 2026-06-05T11:17:06+03:00
+Stopped at: Phase 5 planned. Proceed to execute Phase 5.
 Resume file: None
 
-Last execution update: 2026-06-04T15:54:33+03:00
-Stopped at: Phase 4 completed and committed. Proceed to plan Phase 5.
+Last execution update: 2026-06-05T11:17:06+03:00
+Stopped at: Phase 5 planned. Proceed to execute Phase 5.
 
 ## Next Command
 
-`$gsd-plan-phase 5`
+`$gsd-execute-phase 5`
 
 ## Scope Note
 

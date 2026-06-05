@@ -122,6 +122,8 @@
 
 ## Phase 5: Confidentiality Mode Expansion
 
+**Status:** Planned 2026-06-05
+
 **Goal:** Add the missing SP 800-38A confidentiality modes: CBC, CFB, and OFB.
 
 **Requirements:** MODE-02, MODE-03, MODE-04
@@ -132,6 +134,16 @@
 3. OFB mode has AES-128 and AES-256 coverage and tests.
 4. Benchmark output can compare ECB, CBC, CFB, OFB, CTR, and GCM using the same harness.
 5. Docs explain that ECB/CBC/CFB/OFB/CTR are confidentiality-only modes.
+
+**Plans:**
+
+| Plan | Wave | What it builds |
+|------|------|----------------|
+| `05-01` | 1 | CBC AES-128/AES-256 implementation, KAT coverage, and benchmark dispatch |
+| `05-02` | 2 | CFB-128 and OFB AES-128/AES-256 implementation, KAT coverage, and benchmark dispatch |
+| `05-03` | 3 | Public docs, mode matrix updates, verification evidence, and handoff |
+
+**Wave 2 blocked on Wave 1 completion. Wave 3 blocked on Wave 2 completion.**
 
 ## Phase 6: Authenticated And Specialized Mode Expansion
 
