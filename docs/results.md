@@ -17,6 +17,10 @@ A credible result package should include:
 - GPU clocks and persistence-mode note
 - OS, compiler, CUDA Toolkit, driver, and GPU model
 
+Benchmark result issues and pull requests should follow the canonical
+`docs/benchmark-result-contributions.md` checklist. From this page, open the
+[benchmark result contribution checklist](benchmark-result-contributions.md).
+
 ## Summary Tables
 
 Generate tables from raw files:
@@ -37,4 +41,4 @@ AES-KW and AES-KWP rows are key-wrap workload measurements. For those rows, `blo
 
 ## Claims Policy
 
-Avoid unsupported performance claims. Results should be presented as reproducible measurements for a named environment and commit, not as universal rankings.
+Avoid unsupported performance claims. Results should be presented as reproducible measurements for a named environment and commit, not as universal rankings. Any controlled comparative evidence should preserve the raw artifacts, timing scope, and methodology details that support the claim.

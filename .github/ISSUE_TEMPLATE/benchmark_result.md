@@ -1,4 +1,13 @@
+---
+name: Benchmark Result
+about: Share reproducible CUDA-AES benchmark artifacts for a named environment
+title: "Benchmark result: "
+---
+
 # Benchmark Result Contribution
+
+Before submitting, review the canonical checklist at `docs/benchmark-result-contributions.md`:
+[benchmark result contribution checklist](../../docs/benchmark-result-contributions.md).
 
 ## Result Scope
 
@@ -42,5 +51,8 @@ Attach:
 - `thr_cpu.csv`
 - generated `summary.md`
 
-Do not make ranking or fastest-in-world claims without controlled comparative evidence.
+## Claims Policy
 
+Confirm that these results are environment-specific measurements for the named commit and environment, not universal rankings.
+
+- [ ] I am not making ranking or fastest-in-world claims without controlled comparative evidence.
