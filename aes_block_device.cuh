@@ -75,28 +75,30 @@ static __device__ __forceinline__ void aes_inv_shift_rows_sub_bytes(AesBlock &st
 static __device__ __forceinline__ void aes_mix_columns(AesBlock &st) {
 #pragma unroll
     for (int c = 0; c < 4; ++c) {
-        uint8_t a0 = st.b[c];
-        uint8_t a1 = st.b[4 + c];
-        uint8_t a2 = st.b[8 + c];
-        uint8_t a3 = st.b[12 + c];
-        st.b[c]      = aes_gmul2(a0) ^ aes_gmul3(a1) ^ a2 ^ a3;
-        st.b[4 + c]  = a0 ^ aes_gmul2(a1) ^ aes_gmul3(a2) ^ a3;
-        st.b[8 + c]  = a0 ^ a1 ^ aes_gmul2(a2) ^ aes_gmul3(a3);
-        st.b[12 + c] = aes_gmul3(a0) ^ a1 ^ a2 ^ aes_gmul2(a3);
+        int base = 4 * c;
+        uint8_t a0 = st.b[base];
+        uint8_t a1 = st.b[base + 1];
+        uint8_t a2 = st.b[base + 2];
+        uint8_t a3 = st.b[base + 3];
+        st.b[base]     = aes_gmul2(a0) ^ aes_gmul3(a1) ^ a2 ^ a3;
+        st.b[base + 1] = a0 ^ aes_gmul2(a1) ^ aes_gmul3(a2) ^ a3;
+        st.b[base + 2] = a0 ^ a1 ^ aes_gmul2(a2) ^ aes_gmul3(a3);
+        st.b[base + 3] = aes_gmul3(a0) ^ a1 ^ a2 ^ aes_gmul2(a3);
     }
 }
 
 static __device__ __forceinline__ void aes_inv_mix_columns(AesBlock &st) {
 #pragma unroll
     for (int c = 0; c < 4; ++c) {
-        uint8_t a0 = st.b[c];
-        uint8_t a1 = st.b[4 + c];
-        uint8_t a2 = st.b[8 + c];
-        uint8_t a3 = st.b[12 + c];
-        st.b[c]      = aes_gmul14(a0) ^ aes_gmul11(a1) ^ aes_gmul13(a2) ^ aes_gmul9(a3);
-        st.b[4 + c]  = aes_gmul9(a0) ^ aes_gmul14(a1) ^ aes_gmul11(a2) ^ aes_gmul13(a3);
-        st.b[8 + c]  = aes_gmul13(a0) ^ aes_gmul9(a1) ^ aes_gmul14(a2) ^ aes_gmul11(a3);
-        st.b[12 + c] = aes_gmul11(a0) ^ aes_gmul13(a1) ^ aes_gmul9(a2) ^ aes_gmul14(a3);
+        int base = 4 * c;
+        uint8_t a0 = st.b[base];
+        uint8_t a1 = st.b[base + 1];
+        uint8_t a2 = st.b[base + 2];
+        uint8_t a3 = st.b[base + 3];
+        st.b[base]     = aes_gmul14(a0) ^ aes_gmul11(a1) ^ aes_gmul13(a2) ^ aes_gmul9(a3);
+        st.b[base + 1] = aes_gmul9(a0) ^ aes_gmul14(a1) ^ aes_gmul11(a2) ^ aes_gmul13(a3);
+        st.b[base + 2] = aes_gmul13(a0) ^ aes_gmul9(a1) ^ aes_gmul14(a2) ^ aes_gmul11(a3);
+        st.b[base + 3] = aes_gmul11(a0) ^ aes_gmul13(a1) ^ aes_gmul9(a2) ^ aes_gmul14(a3);
     }
 }
 

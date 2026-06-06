@@ -57,28 +57,30 @@ __device__ __forceinline__ void invShiftRowsSubBytes(Block &st) {
 __device__ __forceinline__ void mixColumns(Block &st) {
 #pragma unroll
     for (int c = 0; c < 4; ++c) {
-        uint8_t a0 = st.b[c];
-        uint8_t a1 = st.b[4 + c];
-        uint8_t a2 = st.b[8 + c];
-        uint8_t a3 = st.b[12 + c];
-        st.b[c]        = gmul2(a0) ^ gmul3(a1) ^ a2 ^ a3;
-        st.b[4 + c]    = a0 ^ gmul2(a1) ^ gmul3(a2) ^ a3;
-        st.b[8 + c]    = a0 ^ a1 ^ gmul2(a2) ^ gmul3(a3);
-        st.b[12 + c]   = gmul3(a0) ^ a1 ^ a2 ^ gmul2(a3);
+        int base = 4 * c;
+        uint8_t a0 = st.b[base];
+        uint8_t a1 = st.b[base + 1];
+        uint8_t a2 = st.b[base + 2];
+        uint8_t a3 = st.b[base + 3];
+        st.b[base]     = gmul2(a0) ^ gmul3(a1) ^ a2 ^ a3;
+        st.b[base + 1] = a0 ^ gmul2(a1) ^ gmul3(a2) ^ a3;
+        st.b[base + 2] = a0 ^ a1 ^ gmul2(a2) ^ gmul3(a3);
+        st.b[base + 3] = gmul3(a0) ^ a1 ^ a2 ^ gmul2(a3);
     }
 }
 
 __device__ __forceinline__ void invMixColumns(Block &st) {
 #pragma unroll
     for (int c = 0; c < 4; ++c) {
-        uint8_t a0 = st.b[c];
-        uint8_t a1 = st.b[4 + c];
-        uint8_t a2 = st.b[8 + c];
-        uint8_t a3 = st.b[12 + c];
-        st.b[c]        = gmul14(a0) ^ gmul11(a1) ^ gmul13(a2) ^ gmul9(a3);
-        st.b[4 + c]    = gmul9(a0) ^ gmul14(a1) ^ gmul11(a2) ^ gmul13(a3);
-        st.b[8 + c]    = gmul13(a0) ^ gmul9(a1) ^ gmul14(a2) ^ gmul11(a3);
-        st.b[12 + c]   = gmul11(a0) ^ gmul13(a1) ^ gmul9(a2) ^ gmul14(a3);
+        int base = 4 * c;
+        uint8_t a0 = st.b[base];
+        uint8_t a1 = st.b[base + 1];
+        uint8_t a2 = st.b[base + 2];
+        uint8_t a3 = st.b[base + 3];
+        st.b[base]     = gmul14(a0) ^ gmul11(a1) ^ gmul13(a2) ^ gmul9(a3);
+        st.b[base + 1] = gmul9(a0) ^ gmul14(a1) ^ gmul11(a2) ^ gmul13(a3);
+        st.b[base + 2] = gmul13(a0) ^ gmul9(a1) ^ gmul14(a2) ^ gmul11(a3);
+        st.b[base + 3] = gmul11(a0) ^ gmul13(a1) ^ gmul9(a2) ^ gmul14(a3);
     }
 }
 

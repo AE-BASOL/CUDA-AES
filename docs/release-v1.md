@@ -1,8 +1,8 @@
-# v1.0.0 Release Notes Draft
+# v1.0.0 Release Notes
 
-**Status:** Release candidate; runtime release gate is currently `verification-blocked`.
+**Status:** Verified release package; GitHub publication remains a maintainer action.
 
-These notes are the source-controlled draft for the canonical `v1.0.0` GitHub Release. They are not final publication notes until the release gate records a passing Release configure/build, CTest run, smoke benchmark, and summary generation from current raw artifacts.
+These notes are the source-controlled basis for the canonical `v1.0.0` GitHub Release. The local release gate passed on 2026-06-06 from a Visual Studio 2022 Developer Command Prompt using the local NVIDIA/CUDA stack.
 
 ## Release Tag
 
@@ -24,62 +24,51 @@ This release does not claim production cryptography library API stability or pro
 
 ## Build And Test Status
 
-Release publication requires these commands to pass in a CUDA host compiler environment:
+The local release gate passed with this Windows CUDA/MSVC environment:
+
+- OS: Windows
+- Compiler: MSVC 1944
+- CUDA runtime version: 12090
+- NVIDIA driver version: 13010
+- GPU: NVIDIA GeForce RTX 3050 Ti Laptop GPU
+- Compute capability: 8.6
+- Build directory: `build-vs2022-release3`
+
+Verified commands:
 
 ```text
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86
-cmake --build build --config Release
-ctest --test-dir build --output-on-failure
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && "C:\Program Files\CMake\bin\cmake.exe" -S . -B build-vs2022-release3 -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86 -DCMAKE_CXX_COMPILER=cl -DOPENSSL_ROOT_DIR=C:/Strawberry/c -DOPENSSL_USE_STATIC_LIBS=FALSE'
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && "C:\Program Files\CMake\bin\cmake.exe" --build build-vs2022-release3 --config Release'
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && "C:\Program Files\CMake\bin\ctest.exe" --test-dir build-vs2022-release3 --output-on-failure'
 ```
 
-On Windows, run from a Visual Studio Developer Command Prompt or pass:
-
-```text
--DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>
-```
-
-Current source-controlled status: `verification-blocked` in this shell because `nvcc` cannot find `cl.exe` during CUDA compiler detection. Keep this document as a release candidate until `.planning/phases/08-release-and-maintenance-loop/08-VERIFICATION.md` records `verification-passed`.
+CTest result: `100% tests passed, 0 tests failed out of 1`.
 
 ## Smoke Benchmark Gate
 
-After CTest passes, run an isolated smoke benchmark and generate a summary from the current raw CSV files:
+The smoke benchmark ran locally with one 1 MiB run per implemented workload:
 
 ```text
-.\build\Release\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\v1-smoke
-python scripts\summarize_benchmarks.py bench\v1-smoke\thr_gpu.csv bench\v1-smoke\thr_cpu.csv -o bench\v1-smoke\summary.md
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && build-vs2022-release3\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\v1-smoke-local'
+python scripts\summarize_benchmarks.py bench\v1-smoke-local\thr_gpu.csv bench\v1-smoke-local\thr_cpu.csv -o bench\v1-smoke-local\summary.md
 ```
 
-Use `./build/CudaProject` on single-config generators where appropriate.
-
-## Benchmark Environment Fields
-
-The release artifact record must name:
-
-- commit hash;
-- GPU model;
-- GPU compute capability;
-- CUDA Toolkit version;
-- NVIDIA driver version;
-- operating system;
-- compiler and version;
-- CMake configure command and cache-relevant options;
-- benchmark command;
-- GPU clocks and persistence-mode note.
+All benchmark round-trip checks and AES-KW/AES-KWP wrap checks passed. The generated summary contains 36 rows.
 
 ## Raw Artifact Manifest
 
-Attach raw benchmark artifacts only from the current verified release-gate run:
+Use only this verified local artifact set for any `v1.0.0` release asset upload:
 
-- `run_metadata.csv`
-- `thr_gpu.csv`
-- `thr_cpu.csv` where applicable
-- generated `summary.md`
+- `bench/v1-smoke-local/run_metadata.csv`
+- `bench/v1-smoke-local/thr_gpu.csv`
+- `bench/v1-smoke-local/thr_cpu.csv`
+- `bench/v1-smoke-local/summary.md`
 
 Do not attach stale throughput files. Do not include benchmark numbers in release notes unless they come from the verified release-gate artifact set.
 
 ## Known Limitations
 
-- Runtime verification in an ordinary Windows shell can be blocked when `nvcc` cannot find `cl.exe`.
+- Runtime verification in an ordinary Windows shell can be blocked when `nvcc` cannot find `cl.exe`; use a Visual Studio Developer Command Prompt or pass an explicit CUDA host compiler.
 - GPU timing rows are `kernel_only` and exclude allocation, transfers, validation, and summary generation.
 - CPU baseline rows are OpenSSL comparison rows, not a controlled CPU performance study.
 - GCM and CCM scope is limited to 96-bit IV/nonce, empty AAD, 16-byte tag where applicable, and full 16-byte blocks.
@@ -96,12 +85,10 @@ Do not attach stale throughput files. Do not include benchmark numbers in releas
 
 ## Publication Checklist
 
-- [ ] Runtime release gate records `verification-passed`; current attempt is `verification-blocked` on missing `cl.exe`.
-- [ ] `CHANGELOG.md` has a dated `1.0.0` section and a fresh `Unreleased` section.
-- [ ] Release notes include the exact verified commands.
-- [ ] Raw artifact manifest lists only current verified files.
+- [x] Runtime release gate records `verification-passed`.
+- [x] `CHANGELOG.md` has a dated `1.0.0` section and a fresh `Unreleased` section.
+- [x] Release notes include the exact verified commands.
+- [x] Raw artifact manifest lists only current verified files.
 - [ ] GitHub Release draft uses the `v1.0.0` tag.
 - [ ] Any release assets are produced by the verified release-gate run.
-- [ ] No ranking, fastest-in-world, or production-library claims are added.
-
-Until these items pass, keep this document and any GitHub release draft marked as a release candidate.
+- [x] No ranking, fastest-in-world, or production-library claims are added.

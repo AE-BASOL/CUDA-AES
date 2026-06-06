@@ -53,6 +53,24 @@ static uint8_t h_inv_sbox[256];    // will be filled in init_T_tables()
 static uint32_t h_T0[256], h_T1[256], h_T2[256], h_T3[256];
 static uint32_t h_U0[256], h_U1[256], h_U2[256], h_U3[256];
 
+static inline uint32_t sub_word_be(uint32_t w) {
+    return ((uint32_t)h_sbox[(w >> 24) & 0xff] << 24) |
+           ((uint32_t)h_sbox[(w >> 16) & 0xff] << 16) |
+           ((uint32_t)h_sbox[(w >> 8) & 0xff] << 8) |
+           ((uint32_t)h_sbox[w & 0xff]);
+}
+
+static inline uint32_t rot_word_be(uint32_t w) {
+    return (w << 8) | (w >> 24);
+}
+
+static inline uint32_t bswap32_host(uint32_t w) {
+    return ((w & 0x000000ffu) << 24) |
+           ((w & 0x0000ff00u) << 8) |
+           ((w & 0x00ff0000u) >> 8) |
+           ((w & 0xff000000u) >> 24);
+}
+
 // Galois field multiplication helper (for generating U-tables)
 inline uint8_t xtime(uint8_t x) {
     // Multiply by 2 in GF(2^8)
@@ -143,7 +161,12 @@ void init_T_tables() {
 //    from host memory to the device constant memory array d_roundKeys.
 // ----------------------------------------------------------
 void init_roundKeys(const uint32_t *rk, int nWords) {
-    cudaError_t err = cudaMemcpyToSymbol(d_roundKeys, rk, nWords * sizeof(uint32_t));
+    uint32_t device_rk[60];
+    for (int i = 0; i < nWords; ++i) {
+        device_rk[i] = bswap32_host(rk[i]);
+    }
+
+    cudaError_t err = cudaMemcpyToSymbol(d_roundKeys, device_rk, nWords * sizeof(uint32_t));
     if (err != cudaSuccess) {
         fprintf(stderr, "cudaMemcpyToSymbol(d_roundKeys) failed: %s\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
@@ -151,7 +174,12 @@ void init_roundKeys(const uint32_t *rk, int nWords) {
 }
 
 void init_xts_tweak_roundKeys(const uint32_t *rk, int nWords) {
-    cudaError_t err = cudaMemcpyToSymbol(d_xtsTweakRoundKeys, rk, nWords * sizeof(uint32_t));
+    uint32_t device_rk[60];
+    for (int i = 0; i < nWords; ++i) {
+        device_rk[i] = bswap32_host(rk[i]);
+    }
+
+    cudaError_t err = cudaMemcpyToSymbol(d_xtsTweakRoundKeys, device_rk, nWords * sizeof(uint32_t));
     if (err != cudaSuccess) {
         fprintf(stderr, "cudaMemcpyToSymbol(d_xtsTweakRoundKeys) failed: %s\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
@@ -175,16 +203,7 @@ void expandKey128(const uint8_t *key, uint32_t *rk) {
     for (int i = 4, rc = 0; i < 44; ++i) {
         uint32_t tmp = rk[i - 1];
         if ((i % 4) == 0) {
-            // Rotate word
-            tmp = (tmp << 8) | (tmp >> 24);
-            // Apply S-box to each byte of tmp
-            uint8_t *bt = (uint8_t*)&tmp;
-            bt[0] = h_sbox[bt[0]];
-            bt[1] = h_sbox[bt[1]];
-            bt[2] = h_sbox[bt[2]];
-            bt[3] = h_sbox[bt[3]];
-            // XOR with round constant
-            bt[0] ^= Rcon[rc++];
+            tmp = sub_word_be(rot_word_be(tmp)) ^ ((uint32_t)Rcon[rc++] << 24);
         }
         rk[i] = rk[i - 4] ^ tmp;
     }
@@ -203,21 +222,9 @@ void expandKey256(const uint8_t *key, uint32_t *rk) {
     for (int i = 8; i < 60; ++i) {
         uint32_t tmp = rk[i - 1];
         if ((i % 8) == 0) {
-            // RotWord + SubWord + Rcon
-            tmp = (tmp << 8) | (tmp >> 24);
-            uint8_t *bt = (uint8_t*)&tmp;
-            bt[0] = h_sbox[bt[0]];
-            bt[1] = h_sbox[bt[1]];
-            bt[2] = h_sbox[bt[2]];
-            bt[3] = h_sbox[bt[3]];
-            bt[0] ^= Rcon[rc++];
+            tmp = sub_word_be(rot_word_be(tmp)) ^ ((uint32_t)Rcon[rc++] << 24);
         } else if ((i % 8) == 4) {
-            // SubWord (no rotation, for 256-bit key schedule)
-            uint8_t *bt = (uint8_t*)&tmp;
-            bt[0] = h_sbox[bt[0]];
-            bt[1] = h_sbox[bt[1]];
-            bt[2] = h_sbox[bt[2]];
-            bt[3] = h_sbox[bt[3]];
+            tmp = sub_word_be(tmp);
         }
         rk[i] = rk[i - 8] ^ tmp;
     }

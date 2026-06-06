@@ -97,7 +97,7 @@ This is the known CUDA host compiler environment blocker, not a source-level rel
 
 External release actions require manual setup. See [08-USER-SETUP.md](./08-USER-SETUP.md) for:
 
-- Running the final release gate from a Visual Studio Developer Command Prompt or with `CMAKE_CUDA_HOST_COMPILER`.
+- The completed local release gate record.
 - Publishing or saving the GitHub Release draft for tag `v1.0.0`.
 - Enabling GitHub private vulnerability reporting if the maintainer chooses that path.
 
@@ -112,11 +112,22 @@ External release actions require manual setup. See [08-USER-SETUP.md](./08-USER-
 
 ## Self-Check: PASSED
 
-All source-controlled task acceptance criteria and plan-level verification commands passed. Runtime release publication remains blocked until the maintainer reruns the release gate in a CUDA/MSVC-ready shell and records `verification-passed`.
+All source-controlled task acceptance criteria and plan-level verification commands passed. The runtime caveat in this original summary is superseded by the post-completion follow-up below and final `08-VERIFICATION.md` status.
 
 ## Next Phase Readiness
 
-Plan 08-03 is complete as a release-candidate handoff. Phase 8 can proceed to final phase-level verification with the runtime release gate caveat preserved.
+Plan 08-03 was originally completed as a release-candidate handoff with the runtime release gate caveat preserved.
+
+## Post-Completion Follow-Up
+
+On 2026-06-06, the local release gate was rerun from a Visual Studio 2022 Developer Command Prompt. The initial `cl.exe` environment blocker was resolved, AES KAT failures exposed source-level byte-order/state-layout issues, and the fixes were verified by:
+
+- `cmake --build build-vs2022-release3 --config Release` - passed.
+- `ctest --test-dir build-vs2022-release3 --output-on-failure` - passed, 1/1 tests.
+- `build-vs2022-release3\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\v1-smoke-local` - passed all round-trip and key-wrap checks.
+- `python scripts\summarize_benchmarks.py bench\v1-smoke-local\thr_gpu.csv bench\v1-smoke-local\thr_cpu.csv -o bench\v1-smoke-local\summary.md` - generated 36 summary rows.
+
+Final phase-level status is now recorded in `08-VERIFICATION.md` as `verification-passed`.
 
 ---
 *Phase: 08-release-and-maintenance-loop*
