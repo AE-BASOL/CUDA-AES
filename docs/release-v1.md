@@ -1,6 +1,6 @@
 # v1.0.0 Release Notes Draft
 
-**Status:** Release candidate until runtime release gate passes.
+**Status:** Release candidate; runtime release gate is currently `verification-blocked`.
 
 These notes are the source-controlled draft for the canonical `v1.0.0` GitHub Release. They are not final publication notes until the release gate records a passing Release configure/build, CTest run, smoke benchmark, and summary generation from current raw artifacts.
 
@@ -38,7 +38,7 @@ On Windows, run from a Visual Studio Developer Command Prompt or pass:
 -DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>
 ```
 
-Current source-controlled status: release candidate until `.planning/phases/08-release-and-maintenance-loop/08-VERIFICATION.md` records `verification-passed`.
+Current source-controlled status: `verification-blocked` in this shell because `nvcc` cannot find `cl.exe` during CUDA compiler detection. Keep this document as a release candidate until `.planning/phases/08-release-and-maintenance-loop/08-VERIFICATION.md` records `verification-passed`.
 
 ## Smoke Benchmark Gate
 
@@ -96,7 +96,7 @@ Do not attach stale throughput files. Do not include benchmark numbers in releas
 
 ## Publication Checklist
 
-- [ ] Runtime release gate records `verification-passed`.
+- [ ] Runtime release gate records `verification-passed`; current attempt is `verification-blocked` on missing `cl.exe`.
 - [ ] `CHANGELOG.md` has a dated `1.0.0` section and a fresh `Unreleased` section.
 - [ ] Release notes include the exact verified commands.
 - [ ] Raw artifact manifest lists only current verified files.
