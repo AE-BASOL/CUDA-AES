@@ -10,7 +10,7 @@
 - [x] **REPO-01**: Developer can clone the repository without generated build artifacts or IDE metadata being treated as source.
 - [x] **REPO-02**: Developer can understand the project positioning from the first screen of `README.md`.
 - [x] **REPO-03**: Developer can see license, contribution, security, citation, changelog, issue, and pull request policies.
-- [ ] **REPO-04**: Maintainer can publish versioned releases with clear release notes.
+- [x] **REPO-04**: Maintainer can publish versioned releases with clear release notes.
 
 ### Build Portability
 
@@ -135,7 +135,7 @@
 | MODE-07 | Phase 6 | Complete |
 | MODE-08 | Phase 6 | Complete |
 | DOCS-04 | Phase 7 | Complete |
-| REPO-04 | Phase 8 | Pending |
+| REPO-04 | Phase 8 | Complete |
 | MAINT-01 | Phase 8 | Complete |
 | MAINT-02 | Phase 8 | Complete |
 | MAINT-03 | Phase 8 | Complete |
