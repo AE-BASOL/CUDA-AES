@@ -94,6 +94,7 @@ schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,
 
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+- [Maintenance](docs/maintenance.md)
 - [Citation metadata](CITATION.cff)
 - [Changelog](CHANGELOG.md)
 - [License](LICENSE)
