@@ -33,24 +33,17 @@ python scripts/summarize_benchmarks.py bench/pr-check/thr_gpu.csv bench/pr-check
 
 ## Benchmark Result Contributions
 
-Benchmark result PRs should include:
+Benchmark result issues and PRs should follow the canonical checklist in
+[docs/benchmark-result-contributions.md](docs/benchmark-result-contributions.md).
 
-- commit hash
-- GPU model and compute capability
-- CUDA Toolkit and driver version
-- OS and compiler
-- CMake configure command
-- `ctest` output summary
-- benchmark command
-- `run_metadata.csv`
-- `thr_gpu.csv`
-- `thr_cpu.csv`
-- generated `summary.md`
-- clocks and persistence-mode note
+At minimum, include the commit hash, CTest status, configure/build command,
+benchmark command, raw CSV artifacts, generated summary, environment metadata,
+clocks/persistence note, and claims-policy acknowledgement.
 
-Do not submit performance claims without raw artifacts.
+Do not submit performance claims without raw artifacts. Accepted results are
+reproducible measurements for a named environment and commit, not universal
+performance rankings.
 
 ## Scope Boundaries
 
 Security-sensitive API hardening and production cryptography guarantees are out of scope for v1. If a contribution changes cryptographic semantics, include deterministic tests and explain the standards scope.
-

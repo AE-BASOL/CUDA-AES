@@ -29,9 +29,11 @@ If benchmark behavior changed, include:
 - `thr_cpu.csv`
 - `summary.md`
 
+Benchmark-changing PRs should follow `docs/benchmark-result-contributions.md`:
+[benchmark result contribution checklist](../docs/benchmark-result-contributions.md).
+
 ## Security And Scope
 
 - [ ] This does not imply production cryptography library safety.
 - [ ] Cryptographic behavior changes include deterministic tests.
 - [ ] Benchmark claims are backed by raw artifacts.
-
