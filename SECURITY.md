@@ -22,7 +22,11 @@ The current supported GCM scope is 96-bit IV, empty AAD, and full 16-byte blocks
 
 ## Reporting
 
-Until a dedicated security contact is configured, open a private maintainer communication channel if available. If the issue is not sensitive, open a GitHub issue and include:
+Use GitHub private vulnerability reporting when it is enabled for this repository. That path lets maintainers review security-sensitive reports before any public disclosure.
+
+If private vulnerability reporting is not enabled and no preferred security contact is listed by the maintainer, open a public GitHub issue asking for the preferred security contact. Do not include sensitive details, private keys, secrets, exploit payloads, or sensitive production data in that public issue.
+
+For non-sensitive issues, open a regular GitHub issue and include:
 
 - affected commit
 - build environment
@@ -31,5 +35,4 @@ Until a dedicated security contact is configured, open a private maintainer comm
 - correctness or benchmark command
 - expected vs actual behavior
 
-Do not include private keys, secrets, or sensitive production data in reports.
-
+Security reports should describe the benchmark/research impact clearly and should not request production cryptography library guarantees for v1.
