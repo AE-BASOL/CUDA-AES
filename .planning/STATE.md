@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 7 planned
-last_updated: "2026-06-05T19:37:00.823Z"
+status: ready_to_plan
+stopped_at: Phase 7 complete; ready to discuss or plan Phase 8
+last_updated: "2026-06-06T11:10:58+03:00"
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-05)
 
 **Core value:** Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
-**Current focus:** Phase 7 - Discoverability And SEO
+**Current focus:** Phase 8 - Release And Maintenance Loop
 
 ## Current Roadmap
 
@@ -28,20 +28,17 @@ See: `.planning/ROADMAP.md`
 
 ## Last Completed Phase
 
-Phase 6: Authenticated And Specialized Mode Expansion
+Phase 7: Discoverability And SEO
 
-**Goal:** Add CCM, XTS-AES, AES-KW, AES-KWP, and document GMAC/CMAC boundaries.
+**Goal:** Optimize GitHub and web discoverability without compromising technical quality.
 
-**Requirements:** MODE-05, MODE-06, MODE-07, MODE-08
-**Status:** Complete 2026-06-05 at source level; runtime CMake/CTest remains environment-limited by missing `cl.exe`.
-**Plans:** 4 plans in 4 waves
+**Requirements:** DOCS-04
+**Status:** Complete 2026-06-06
+**Plans:** 1 plan in 1 wave
 
 | Plan | Wave | Focus |
 |------|------|-------|
-| `06-01` | 1 | CCM implementation, authenticated KATs, benchmark dispatch, and AEAD parameter docs |
-| `06-02` | 2 | XTS-AES implementation, full-block data-unit KATs, benchmark dispatch, and storage docs |
-| `06-03` | 3 | AES-KW/AES-KWP implementation, wrap/unwrap and tamper KATs, benchmark dispatch, and workload docs |
-| `06-04` | 4 | Documentation, GMAC/CMAC boundaries, verification evidence, and Phase 7 handoff |
+| `07-01` | 1 | README discoverability wording, stable docs landing page, GitHub metadata recommendations, and DOCS-04 verification evidence |
 
 ## Status
 
@@ -52,20 +49,17 @@ Phase 6: Authenticated And Specialized Mode Expansion
 - Phase 4 executed: public README/docs hub, governance files, citation metadata, templates, mode matrix, legacy provenance notes, and verification evidence are complete.
 - Phase 5 executed: CBC, CFB-128, and OFB source, KAT, benchmark, documentation, and verification evidence are complete at source level.
 - Phase 6 executed: CCM, XTS-AES, AES-KW, AES-KWP source, KAT, benchmark dispatch, documentation, GMAC/CMAC boundaries, and verification evidence are complete at source level.
+- Phase 7 executed: README discoverability wording, stable docs landing page, GitHub metadata recommendations, DOCS-04 verification evidence, and user setup handoff are complete.
 
 ## Current Phase
 
-Phase 7: Discoverability And SEO
+Phase 8: Release And Maintenance Loop
 
-**Goal:** Optimize GitHub and web discoverability without compromising technical quality.
+**Goal:** Publish a v1 release and define how the repo stays alive.
 
-**Requirements:** DOCS-04
-**Planning status:** Ready to execute
-**Plans:** 1 plan in 1 wave
-
-| Plan | Wave | Focus |
-|------|------|-------|
-| `07-01` | 1 | README discoverability wording, stable docs landing page, GitHub metadata recommendations, and DOCS-04 verification evidence |
+**Requirements:** REPO-04, MAINT-01, MAINT-02, MAINT-03, MAINT-04
+**Planning status:** Ready to discuss or plan
+**Plans:** Not planned yet
 
 ## Carried Verification Debt
 
@@ -77,16 +71,16 @@ Phase 7: Discoverability And SEO
 
 ## Session Continuity
 
-Last session: 2026-06-05T19:18:30.832Z
-Stopped at: Phase 7 planned
-Resume file: .planning/phases/07-discoverability-and-seo/07-01-PLAN.md
+Last session: 2026-06-06T11:10:58+03:00
+Stopped at: Phase 7 complete; ready to discuss or plan Phase 8
+Resume file: None
 
-Last execution update: 2026-06-05T16:57:05+03:00
-Stopped at: Phase 6 completed with source-level verification. Proceed to discuss or plan Phase 7.
+Last execution update: 2026-06-06T11:10:58+03:00
+Stopped at: Phase 7 completed with DOCS-04 verification evidence. Proceed to discuss or plan Phase 8.
 
 ## Next Command
 
-`$gsd-execute-phase 7`
+`$gsd-discuss-phase 8`
 
 ## Scope Note
 
