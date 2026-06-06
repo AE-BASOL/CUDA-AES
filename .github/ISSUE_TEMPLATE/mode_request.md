@@ -1,3 +1,9 @@
+---
+name: AES Mode Request
+about: Request future AES mode or MAC/authentication benchmark coverage
+title: "Mode request: "
+---
+
 # AES Mode Request
 
 ## Requested Mode
@@ -24,5 +30,4 @@ Link the relevant NIST or standards reference if known.
 
 ## Notes
 
-This project is benchmark/research software, not a production cryptography library.
-
+This project is benchmark/research software, not a production cryptography library. Requests should explain benchmark value, standards scope, and expected coverage rather than production API guarantees.
