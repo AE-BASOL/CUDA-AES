@@ -2,9 +2,9 @@
 
 **Generated:** 2026-06-06
 **Phase:** 08-release-and-maintenance-loop
-**Status:** Pending external publication
+**Status:** Published — only the optional private vulnerability reporting toggle remains a maintainer choice.
 
-Complete these items before treating v1 as fully published on GitHub. The local CUDA/MSVC release gate has passed; remaining items require maintainer access to GitHub repository settings or release publication.
+The local CUDA/MSVC release gate passed and the `v1.0.0` GitHub Release is published (2026-06-06). The single remaining item below is the optional GitHub private vulnerability reporting setting, which is the maintainer's discretion.
 
 ## Environment Variables
 
@@ -21,13 +21,13 @@ None.
   - Set to: Enabled, if the maintainer wants security researchers to report privately through GitHub
   - Skip if: The repository owner prefers a different private maintainer contact path
 
-- [ ] **Publish or save the GitHub Release draft**
-  - Location: GitHub repository -> Releases -> Draft a new release
-  - Tag: `v1.0.0`
+- [x] **Publish or save the GitHub Release draft**
+  - Published: 2026-06-06 via `gh release create v1.0.0` (full release, not draft).
+  - URL: https://github.com/AE-BASOL/CUDA-AES/releases/tag/v1.0.0
+  - Tag: `v1.0.0` (annotated, points at `d63bff9`)
   - Title: `CUDA-AES Benchmark v1.0.0`
   - Notes source: `docs/release-v1.md`
-  - Required before publish: runtime release gate has `verification-passed` in `08-VERIFICATION.md`
-  - Assets: attach only raw artifacts from `bench\v1-smoke-local`
+  - Assets attached: `run_metadata.csv`, `thr_gpu.csv`, `thr_cpu.csv`, `summary.md` from `bench\v1-smoke-local`
 
 ## Local Release Gate
 
