@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 7 complete; ready to discuss or plan Phase 8
-last_updated: "2026-06-06T11:10:58+03:00"
+status: waiting_human_action
+stopped_at: Phase 7 source changes complete; GitHub metadata setup pending
+last_updated: "2026-06-06T11:35:00+03:00"
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 6
   total_plans: 20
   completed_plans: 20
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-05)
 
 **Core value:** Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
-**Current focus:** Phase 8 - Release And Maintenance Loop
+**Current focus:** Phase 7 - GitHub metadata setup for Discoverability And SEO
 
 ## Current Roadmap
 
@@ -28,17 +28,20 @@ See: `.planning/ROADMAP.md`
 
 ## Last Completed Phase
 
-Phase 7: Discoverability And SEO
+Phase 6: Authenticated And Specialized Mode Expansion
 
-**Goal:** Optimize GitHub and web discoverability without compromising technical quality.
+**Goal:** Add CCM, XTS-AES, AES-KW, AES-KWP, and document GMAC/CMAC boundaries.
 
-**Requirements:** DOCS-04
-**Status:** Complete 2026-06-06
-**Plans:** 1 plan in 1 wave
+**Requirements:** MODE-05, MODE-06, MODE-07, MODE-08
+**Status:** Complete 2026-06-05 at source level; runtime CMake/CTest remains environment-limited by missing `cl.exe`.
+**Plans:** 4 plans in 4 waves
 
 | Plan | Wave | Focus |
 |------|------|-------|
-| `07-01` | 1 | README discoverability wording, stable docs landing page, GitHub metadata recommendations, and DOCS-04 verification evidence |
+| `06-01` | 1 | CCM implementation, authenticated KATs, benchmark dispatch, and AEAD parameter docs |
+| `06-02` | 2 | XTS-AES implementation, full-block data-unit KATs, benchmark dispatch, and storage docs |
+| `06-03` | 3 | AES-KW/AES-KWP implementation, wrap/unwrap and tamper KATs, benchmark dispatch, and workload docs |
+| `06-04` | 4 | Documentation, GMAC/CMAC boundaries, verification evidence, and Phase 7 handoff |
 
 ## Status
 
@@ -49,17 +52,27 @@ Phase 7: Discoverability And SEO
 - Phase 4 executed: public README/docs hub, governance files, citation metadata, templates, mode matrix, legacy provenance notes, and verification evidence are complete.
 - Phase 5 executed: CBC, CFB-128, and OFB source, KAT, benchmark, documentation, and verification evidence are complete at source level.
 - Phase 6 executed: CCM, XTS-AES, AES-KW, AES-KWP source, KAT, benchmark dispatch, documentation, GMAC/CMAC boundaries, and verification evidence are complete at source level.
-- Phase 7 executed: README discoverability wording, stable docs landing page, GitHub metadata recommendations, DOCS-04 verification evidence, and user setup handoff are complete.
+- Phase 7 source changes executed: README discoverability wording, stable docs landing page, GitHub metadata recommendations, DOCS-04 source verification evidence, and user setup handoff are complete.
+- Phase 7 remains open until the GitHub repository description and topics in `07-USER-SETUP.md` are applied.
 
 ## Current Phase
 
-Phase 8: Release And Maintenance Loop
+Phase 7: Discoverability And SEO
 
-**Goal:** Publish a v1 release and define how the repo stays alive.
+**Goal:** Optimize GitHub and web discoverability without compromising technical quality.
 
-**Requirements:** REPO-04, MAINT-01, MAINT-02, MAINT-03, MAINT-04
-**Planning status:** Ready to discuss or plan
-**Plans:** Not planned yet
+**Requirements:** DOCS-04
+**Planning status:** Source changes complete; waiting for maintainer metadata action
+**Plans:** 1 plan in 1 wave
+
+| Plan | Wave | Focus |
+|------|------|-------|
+| `07-01` | 1 | README discoverability wording, stable docs landing page, GitHub metadata recommendations, and DOCS-04 source verification evidence |
+
+## Pending Human Action
+
+- Apply the GitHub repository description and topics listed in `.planning/phases/07-discoverability-and-seo/07-USER-SETUP.md`.
+- After the GitHub About panel is updated, mark `07-USER-SETUP.md` complete, then mark DOCS-04 and Phase 7 complete.
 
 ## Carried Verification Debt
 
@@ -71,16 +84,16 @@ Phase 8: Release And Maintenance Loop
 
 ## Session Continuity
 
-Last session: 2026-06-06T11:10:58+03:00
-Stopped at: Phase 7 complete; ready to discuss or plan Phase 8
-Resume file: None
+Last session: 2026-06-06T11:35:00+03:00
+Stopped at: Phase 7 source changes complete; GitHub metadata setup pending
+Resume file: .planning/phases/07-discoverability-and-seo/07-USER-SETUP.md
 
-Last execution update: 2026-06-06T11:10:58+03:00
-Stopped at: Phase 7 completed with DOCS-04 verification evidence. Proceed to discuss or plan Phase 8.
+Last execution update: 2026-06-06T11:35:00+03:00
+Stopped at: Phase 7 source changes completed with DOCS-04 source verification evidence. GitHub metadata must be applied before Phase 7 closes.
 
 ## Next Command
 
-`$gsd-discuss-phase 8`
+Apply `.planning/phases/07-discoverability-and-seo/07-USER-SETUP.md`, then mark DOCS-04 complete.
 
 ## Scope Note
 

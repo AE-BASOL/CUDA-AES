@@ -1,7 +1,7 @@
 ---
 phase: 07-discoverability-and-seo
 requirement: DOCS-04
-status: passed
+status: source_changes_passed_metadata_pending
 verified_at: 2026-06-06T11:00:49+03:00
 ---
 
@@ -10,6 +10,10 @@ verified_at: 2026-06-06T11:00:49+03:00
 ## Requirement
 
 DOCS-04: Search engines and GitHub search can infer that the repository is about CUDA AES, GPU AES benchmark, AES GPU performance, and reproducible cryptography benchmarking.
+
+## Current Status
+
+Source-controlled discoverability changes pass, but DOCS-04 remains pending until the GitHub repository description and topics are applied through the maintainer action in `07-USER-SETUP.md`.
 
 ## Source Changes Verified
 
@@ -37,7 +41,7 @@ Repository topics:
 - `aes-ctr`
 - `gpu-cryptography`
 
-These values should be applied through the GitHub repository UI or API by a maintainer with metadata permissions.
+These values must be applied through the GitHub repository UI or API by a maintainer with metadata permissions before DOCS-04 is marked complete.
 
 ## GitHub Pages
 
@@ -53,3 +57,7 @@ GitHub Pages is deferred. Phase 7 intentionally does not add Pages configuration
 ## Claim Guardrails
 
 No unsupported performance leadership claim was introduced. The README still states that the project does not claim to be the fastest GPU AES implementation, and the new wording keeps benchmark claims tied to correctness evidence, raw artifacts, and methodology.
+
+## Completion Gate
+
+Do not mark DOCS-04 complete until `07-USER-SETUP.md` is updated to `Status: Complete` after the GitHub repository About panel shows the recommended description and topics.

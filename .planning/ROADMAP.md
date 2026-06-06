@@ -14,7 +14,7 @@
 | 4 | Open-Source Documentation Package | Complete 2026-06-04. Turn the repo into a credible public landing page and contributor-ready project, including a full AES mode matrix. | REPO-02, REPO-03, DOCS-01, DOCS-02, DOCS-03, DOCS-05, MODE-01 |
 | 5 | Confidentiality Mode Expansion | Complete 2026-06-05. Add the missing SP 800-38A confidentiality modes: CBC, CFB, and OFB. | MODE-02, MODE-03, MODE-04 |
 | 6 | Authenticated And Specialized Mode Expansion | Complete 2026-06-05 at source level. Add CCM, XTS-AES, AES-KW, AES-KWP, and document GMAC/CMAC boundaries. | MODE-05, MODE-06, MODE-07, MODE-08 |
-| 7 | Discoverability And SEO | Complete 2026-06-06. Optimize GitHub and web discoverability without compromising technical quality. | DOCS-04 |
+| 7 | Discoverability And SEO | Source changes complete 2026-06-06; GitHub metadata setup pending. Optimize GitHub and web discoverability without compromising technical quality. | DOCS-04 |
 | 8 | Release And Maintenance Loop | Publish a v1 release and define how the repo stays alive. | REPO-04, MAINT-01, MAINT-02, MAINT-03, MAINT-04 |
 
 ## Phase 1: Repository And Build Foundation
@@ -173,7 +173,7 @@
 
 ## Phase 7: Discoverability And SEO
 
-**Status:** Complete 2026-06-06
+**Status:** Source changes complete 2026-06-06; GitHub metadata setup pending
 
 **Goal:** Optimize GitHub and web discoverability without compromising technical quality.
 

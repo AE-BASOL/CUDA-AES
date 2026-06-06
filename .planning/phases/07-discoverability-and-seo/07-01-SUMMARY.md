@@ -9,7 +9,7 @@ requires:
 provides:
   - "SEO-forward README wording for CUDA AES and GPU AES benchmark searches"
   - "Stable docs/README.md landing page with descriptive documentation navigation"
-  - "Source-controlled DOCS-04 verification evidence and GitHub metadata recommendations"
+  - "Source-controlled DOCS-04 source verification evidence and GitHub metadata recommendations"
   - "Maintainer setup checklist for applying GitHub repository metadata"
 affects: [08-release-and-maintenance-loop, public-documentation, repository-metadata]
 tech-stack:
@@ -29,7 +29,8 @@ key-decisions:
 patterns-established:
   - "Search terms are included in headings, link text, and concise prose rather than keyword blocks."
   - "Repository metadata recommendations are source-controlled when automation cannot apply them."
-requirements-completed: [DOCS-04]
+requirements-completed: []
+requirements-pending: [DOCS-04]
 duration: 10 min
 completed: 2026-06-06
 ---
@@ -50,7 +51,7 @@ completed: 2026-06-06
 
 - Tuned the README first screen so CUDA AES benchmark, GPU AES benchmark, AES GPU performance, AES-GCM CUDA, AES-128 CUDA, AES-256 CUDA, and reproducible cryptography benchmark appear in natural technical prose.
 - Added `docs/README.md` as a stable documentation landing page that routes readers to mode coverage, benchmark methodology, correctness, results, architecture, profiling, and legacy/provenance material.
-- Created `07-VERIFICATION.md` with DOCS-04 evidence, exact GitHub repository description/topics, and an explicit GitHub Pages deferral.
+- Created `07-VERIFICATION.md` with DOCS-04 source evidence, exact GitHub repository description/topics, and an explicit GitHub Pages deferral.
 - Created `07-USER-SETUP.md` for the maintainer-only GitHub metadata update.
 - Reviewed `CITATION.cff` and left it unchanged because the existing title, abstract, and keywords are aligned.
 
@@ -68,7 +69,7 @@ Each task was committed atomically:
 
 - `README.md` - SEO-forward project introduction, benchmark coverage heading, and docs landing-page link.
 - `docs/README.md` - stable search-friendly documentation landing page.
-- `.planning/phases/07-discoverability-and-seo/07-VERIFICATION.md` - DOCS-04 evidence and GitHub metadata recommendations.
+- `.planning/phases/07-discoverability-and-seo/07-VERIFICATION.md` - DOCS-04 source evidence and GitHub metadata recommendations.
 - `.planning/phases/07-discoverability-and-seo/07-USER-SETUP.md` - maintainer checklist for applying GitHub repository metadata.
 
 ## Decisions Made
@@ -105,13 +106,15 @@ External repository metadata requires manual configuration. See [07-USER-SETUP.m
 - `rg "DOCS-04|cuda-aes|gpu-aes|aes-benchmark|cuda-benchmark|cryptography-benchmark|reproducible-benchmarks|GitHub Pages|deferred" .planning\phases\07-discoverability-and-seo\07-VERIFICATION.md` - passed.
 - `rg "fastest|production cryptography library|production encryption library" README.md docs .planning\phases\07-discoverability-and-seo\07-VERIFICATION.md` - passed as a guardrail check: matches are the intended disclaimer and existing no-fastest-claim limitation.
 
-## Self-Check: PASSED
+## Self-Check: PASSED WITH METADATA ACTION PENDING
 
-All task acceptance criteria and plan-level verification commands passed. Phase 7 remained documentation/metadata-only, did not add GitHub Pages setup, and did not introduce unsupported performance or production-library claims.
+All source-controlled task acceptance criteria and plan-level verification commands passed. Phase 7 remained documentation/metadata-only, did not add GitHub Pages setup, and did not introduce unsupported performance or production-library claims.
+
+DOCS-04 remains pending until the maintainer applies the GitHub repository description and topics from `07-USER-SETUP.md`.
 
 ## Next Phase Readiness
 
-Phase 7 is complete and ready for Phase 8: Release And Maintenance Loop. The remaining human action is applying the recommended GitHub metadata from `07-USER-SETUP.md`.
+Phase 7 source work is complete, but the phase should not advance to Phase 8 until the recommended GitHub metadata from `07-USER-SETUP.md` is applied and DOCS-04 is marked complete.
 
 ---
 *Phase: 07-discoverability-and-seo*
