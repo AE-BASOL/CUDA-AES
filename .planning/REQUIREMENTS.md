@@ -61,8 +61,8 @@
 
 ### Maintenance
 
-- [ ] **MAINT-01**: Contributor can open useful issues and pull requests using templates.
-- [ ] **MAINT-02**: Maintainer can evaluate benchmark-result contributions with a documented checklist.
+- [x] **MAINT-01**: Contributor can open useful issues and pull requests using templates.
+- [x] **MAINT-02**: Maintainer can evaluate benchmark-result contributions with a documented checklist.
 - [ ] **MAINT-03**: Maintainer can track future work through roadmap and changelog.
 - [ ] **MAINT-04**: Security-sensitive reports have an explicit reporting path and scope.
 
@@ -136,8 +136,8 @@
 | MODE-08 | Phase 6 | Complete |
 | DOCS-04 | Phase 7 | Complete |
 | REPO-04 | Phase 8 | Pending |
-| MAINT-01 | Phase 8 | Pending |
-| MAINT-02 | Phase 8 | Pending |
+| MAINT-01 | Phase 8 | Complete |
+| MAINT-02 | Phase 8 | Complete |
 | MAINT-03 | Phase 8 | Pending |
 | MAINT-04 | Phase 8 | Pending |
 
