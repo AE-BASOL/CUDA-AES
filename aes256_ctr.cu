@@ -64,20 +64,20 @@ __device__ __forceinline__ uint4 aes256_ctr_generate_keystream(uint64_t ctr_lo,
 
     const uint8_t *sb = sh_sbox;
     uint32_t k0 = static_cast<uint32_t>(sb[s0 & 0xFF]) |
-                  (static_cast<uint32_t>(sb[s1 & 0xFF]) << 8) |
-                  (static_cast<uint32_t>(sb[s2 & 0xFF]) << 16) |
-                  (static_cast<uint32_t>(sb[s3 & 0xFF]) << 24);
-    uint32_t k1 = static_cast<uint32_t>(sb[(s1 >> 8) & 0xFF]) |
+                  (static_cast<uint32_t>(sb[(s1 >> 8) & 0xFF]) << 8) |
+                  (static_cast<uint32_t>(sb[(s2 >> 16) & 0xFF]) << 16) |
+                  (static_cast<uint32_t>(sb[(s3 >> 24) & 0xFF]) << 24);
+    uint32_t k1 = static_cast<uint32_t>(sb[s1 & 0xFF]) |
                   (static_cast<uint32_t>(sb[(s2 >> 8) & 0xFF]) << 8) |
-                  (static_cast<uint32_t>(sb[(s3 >> 8) & 0xFF]) << 16) |
-                  (static_cast<uint32_t>(sb[(s0 >> 8) & 0xFF]) << 24);
-    uint32_t k2 = static_cast<uint32_t>(sb[(s2 >> 16) & 0xFF]) |
-                  (static_cast<uint32_t>(sb[(s3 >> 16) & 0xFF]) << 8) |
+                  (static_cast<uint32_t>(sb[(s3 >> 16) & 0xFF]) << 16) |
+                  (static_cast<uint32_t>(sb[(s0 >> 24) & 0xFF]) << 24);
+    uint32_t k2 = static_cast<uint32_t>(sb[s2 & 0xFF]) |
+                  (static_cast<uint32_t>(sb[(s3 >> 8) & 0xFF]) << 8) |
                   (static_cast<uint32_t>(sb[(s0 >> 16) & 0xFF]) << 16) |
-                  (static_cast<uint32_t>(sb[(s1 >> 16) & 0xFF]) << 24);
-    uint32_t k3 = static_cast<uint32_t>(sb[(s3 >> 24) & 0xFF]) |
-                  (static_cast<uint32_t>(sb[(s0 >> 24) & 0xFF]) << 8) |
-                  (static_cast<uint32_t>(sb[(s1 >> 24) & 0xFF]) << 16) |
+                  (static_cast<uint32_t>(sb[(s1 >> 24) & 0xFF]) << 24);
+    uint32_t k3 = static_cast<uint32_t>(sb[s3 & 0xFF]) |
+                  (static_cast<uint32_t>(sb[(s0 >> 8) & 0xFF]) << 8) |
+                  (static_cast<uint32_t>(sb[(s1 >> 16) & 0xFF]) << 16) |
                   (static_cast<uint32_t>(sb[(s2 >> 24) & 0xFF]) << 24);
 
     k0 ^= rk[56];

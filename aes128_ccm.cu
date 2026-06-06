@@ -40,20 +40,20 @@ __device__ __forceinline__ void aes128_encrypt_block(const uint8_t in[16], uint8
     }
 
     uint32_t k0 = static_cast<uint32_t>(d_sbox[s0 & 0xFF]) |
-                  (static_cast<uint32_t>(d_sbox[s1 & 0xFF]) << 8) |
-                  (static_cast<uint32_t>(d_sbox[s2 & 0xFF]) << 16) |
-                  (static_cast<uint32_t>(d_sbox[s3 & 0xFF]) << 24);
-    uint32_t k1 = static_cast<uint32_t>(d_sbox[(s1 >> 8) & 0xFF]) |
+                  (static_cast<uint32_t>(d_sbox[(s1 >> 8) & 0xFF]) << 8) |
+                  (static_cast<uint32_t>(d_sbox[(s2 >> 16) & 0xFF]) << 16) |
+                  (static_cast<uint32_t>(d_sbox[(s3 >> 24) & 0xFF]) << 24);
+    uint32_t k1 = static_cast<uint32_t>(d_sbox[s1 & 0xFF]) |
                   (static_cast<uint32_t>(d_sbox[(s2 >> 8) & 0xFF]) << 8) |
-                  (static_cast<uint32_t>(d_sbox[(s3 >> 8) & 0xFF]) << 16) |
-                  (static_cast<uint32_t>(d_sbox[(s0 >> 8) & 0xFF]) << 24);
-    uint32_t k2 = static_cast<uint32_t>(d_sbox[(s2 >> 16) & 0xFF]) |
-                  (static_cast<uint32_t>(d_sbox[(s3 >> 16) & 0xFF]) << 8) |
+                  (static_cast<uint32_t>(d_sbox[(s3 >> 16) & 0xFF]) << 16) |
+                  (static_cast<uint32_t>(d_sbox[(s0 >> 24) & 0xFF]) << 24);
+    uint32_t k2 = static_cast<uint32_t>(d_sbox[s2 & 0xFF]) |
+                  (static_cast<uint32_t>(d_sbox[(s3 >> 8) & 0xFF]) << 8) |
                   (static_cast<uint32_t>(d_sbox[(s0 >> 16) & 0xFF]) << 16) |
-                  (static_cast<uint32_t>(d_sbox[(s1 >> 16) & 0xFF]) << 24);
-    uint32_t k3 = static_cast<uint32_t>(d_sbox[(s3 >> 24) & 0xFF]) |
-                  (static_cast<uint32_t>(d_sbox[(s0 >> 24) & 0xFF]) << 8) |
-                  (static_cast<uint32_t>(d_sbox[(s1 >> 24) & 0xFF]) << 16) |
+                  (static_cast<uint32_t>(d_sbox[(s1 >> 24) & 0xFF]) << 24);
+    uint32_t k3 = static_cast<uint32_t>(d_sbox[s3 & 0xFF]) |
+                  (static_cast<uint32_t>(d_sbox[(s0 >> 8) & 0xFF]) << 8) |
+                  (static_cast<uint32_t>(d_sbox[(s1 >> 16) & 0xFF]) << 16) |
                   (static_cast<uint32_t>(d_sbox[(s2 >> 24) & 0xFF]) << 24);
 
     store_le32(out, k0 ^ rk[40]);

@@ -2,9 +2,9 @@
 
 **Generated:** 2026-06-06
 **Phase:** 08-release-and-maintenance-loop
-**Status:** Incomplete
+**Status:** Pending external publication
 
-Complete these items before treating v1 as fully published. The source-controlled docs and release-candidate artifacts are prepared, but these items require a CUDA/MSVC-ready shell or maintainer access to GitHub repository settings.
+Complete these items before treating v1 as fully published on GitHub. The local CUDA/MSVC release gate has passed; remaining items require maintainer access to GitHub repository settings or release publication.
 
 ## Environment Variables
 
@@ -26,25 +26,23 @@ None.
   - Tag: `v1.0.0`
   - Title: `CUDA-AES Benchmark v1.0.0`
   - Notes source: `docs/release-v1.md`
-  - Required before publish: runtime release gate has `verification-passed`
-  - Assets: attach only raw artifacts from the verified release-gate run
+  - Required before publish: runtime release gate has `verification-passed` in `08-VERIFICATION.md`
+  - Assets: attach only raw artifacts from `bench\v1-smoke-local`
 
 ## Local Release Gate
 
-- [ ] **Run the final release gate from a CUDA/MSVC-ready shell**
-  - Use: Visual Studio Developer Command Prompt, or pass `-DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>`
-  - Commands:
+- [x] **Run the final release gate from a CUDA/MSVC-ready shell**
+  - Completed: 2026-06-06 from a Visual Studio 2022 Developer Command Prompt.
+  - Build dir: `build-vs2022-release3`
+  - Artifact dir: `bench\v1-smoke-local`
+  - Commands run:
 
 ```powershell
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86 -DCMAKE_CUDA_HOST_COMPILER=<path-to-cl.exe>
-cmake --build build --config Release
-ctest --test-dir build --output-on-failure
-.\build\Release\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\v1-smoke
-python scripts\summarize_benchmarks.py bench\v1-smoke\thr_gpu.csv bench\v1-smoke\thr_cpu.csv -o bench\v1-smoke\summary.md
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && "C:\Program Files\CMake\bin\cmake.exe" --build build-vs2022-release3 --config Release'
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && "C:\Program Files\CMake\bin\ctest.exe" --test-dir build-vs2022-release3 --output-on-failure'
+cmd.exe /s /c 'call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 && build-vs2022-release3\CudaProject.exe --runs 1 --sizes 1048576 --bench-dir bench\v1-smoke-local'
+python scripts\summarize_benchmarks.py bench\v1-smoke-local\thr_gpu.csv bench\v1-smoke-local\thr_cpu.csv -o bench\v1-smoke-local\summary.md
 ```
-
-  - If the executable is produced at `.\build\CudaProject.exe`, use that path instead.
-  - After a pass, update `08-VERIFICATION.md`, `docs/release-v1.md`, and `CHANGELOG.md` from release candidate to final publication state.
 
 ## Verification
 
@@ -56,4 +54,4 @@ After completing setup:
 
 ---
 
-**Once all items complete:** Mark status as "Complete" at top of file.
+**Once GitHub publication items complete:** Mark status as "Complete" at top of file.
