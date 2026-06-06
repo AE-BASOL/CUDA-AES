@@ -1,10 +1,12 @@
 # CUDA-AES Benchmark
 
-CUDA-AES Benchmark is a reproducible GPU AES benchmark suite for CUDA developers. It measures CUDA kernels for AES-128 and AES-256, compares them with an OpenSSL CPU baseline, records raw benchmark artifacts, and documents the correctness and methodology behind the numbers.
+CUDA-AES Benchmark is a reproducible CUDA AES benchmark and GPU AES benchmark suite for CUDA developers. It measures CUDA kernels for AES-128 and AES-256, compares them with an OpenSSL CPU baseline, records raw benchmark artifacts, and documents the correctness and methodology behind the numbers.
+
+Use this project to study AES GPU performance across CUDA AES modes, including AES-GCM CUDA, AES-128 CUDA, AES-256 CUDA, CBC, CFB, OFB, CTR, CCM, XTS-AES, AES-KW, and AES-KWP workloads. The repository is intended as a reproducible cryptography benchmark with raw artifacts and explicit scope notes, not as a source of unsupported speed claims.
 
 This repository is benchmark and research software, not a production cryptography library.
 
-## Current Coverage
+## CUDA AES Benchmark Coverage
 
 Implemented in the canonical top-level build:
 
@@ -79,6 +81,7 @@ schema_version,benchmark_run_id,timing_scope,device,cipher,block_size,run_index,
 
 ## Documentation
 
+- [Documentation landing page](docs/README.md) - search-friendly CUDA AES benchmark documentation index
 - [Architecture](docs/architecture.md) - canonical source layout and runtime flow
 - [Correctness](docs/correctness.md) - KAT coverage, GCM scope, and verification limits
 - [Benchmark Methodology](docs/benchmark-methodology.md) - reproducible run procedure, raw files, timing scope, and summary generation
