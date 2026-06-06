@@ -63,8 +63,8 @@
 
 - [x] **MAINT-01**: Contributor can open useful issues and pull requests using templates.
 - [x] **MAINT-02**: Maintainer can evaluate benchmark-result contributions with a documented checklist.
-- [ ] **MAINT-03**: Maintainer can track future work through roadmap and changelog.
-- [ ] **MAINT-04**: Security-sensitive reports have an explicit reporting path and scope.
+- [x] **MAINT-03**: Maintainer can track future work through roadmap and changelog.
+- [x] **MAINT-04**: Security-sensitive reports have an explicit reporting path and scope.
 
 ## v2 Requirements
 
@@ -138,8 +138,8 @@
 | REPO-04 | Phase 8 | Pending |
 | MAINT-01 | Phase 8 | Complete |
 | MAINT-02 | Phase 8 | Complete |
-| MAINT-03 | Phase 8 | Pending |
-| MAINT-04 | Phase 8 | Pending |
+| MAINT-03 | Phase 8 | Complete |
+| MAINT-04 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 40 total
