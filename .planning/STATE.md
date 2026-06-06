@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 8 planned
-last_updated: "2026-06-06T17:58:10.877Z"
+last_updated: "2026-06-06T18:08:53.635Z"
 progress:
   total_phases: 8
   completed_phases: 7
@@ -20,7 +20,7 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-05)
 
 **Core value:** Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
-**Current focus:** Phase 8 - Release And Maintenance Loop
+**Current focus:** Phase 08 — release-and-maintenance-loop
 
 ## Current Roadmap
 
@@ -33,7 +33,7 @@ Phase 7: Discoverability And SEO
 **Goal:** Optimize GitHub and web discoverability without compromising technical quality.
 
 **Requirements:** DOCS-04
-**Status:** Ready to execute
+**Status:** Executing Phase 08
 **Plans:** 1 plan in 1 wave
 
 | Plan | Wave | Focus |
