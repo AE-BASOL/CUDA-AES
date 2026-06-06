@@ -56,7 +56,7 @@
 - [x] **DOCS-01**: Reader can understand what GPU AES modes are implemented and what is not implemented.
 - [x] **DOCS-02**: Reader can follow build, test, and benchmark instructions without private local knowledge.
 - [x] **DOCS-03**: Reader can find pages for benchmark methodology, correctness, results, architecture, and profiling.
-- [ ] **DOCS-04**: Search engines and GitHub search can infer that the repository is about CUDA AES, GPU AES benchmark, AES GPU performance, and reproducible cryptography benchmarking.
+- [x] **DOCS-04**: Search engines and GitHub search can infer that the repository is about CUDA AES, GPU AES benchmark, AES GPU performance, and reproducible cryptography benchmarking.
 - [x] **DOCS-05**: Reader can cite the project using `CITATION.cff`.
 
 ### Maintenance
@@ -134,7 +134,7 @@
 | MODE-06 | Phase 6 | Complete |
 | MODE-07 | Phase 6 | Complete |
 | MODE-08 | Phase 6 | Complete |
-| DOCS-04 | Phase 7 | Pending |
+| DOCS-04 | Phase 7 | Complete |
 | REPO-04 | Phase 8 | Pending |
 | MAINT-01 | Phase 8 | Pending |
 | MAINT-02 | Phase 8 | Pending |
