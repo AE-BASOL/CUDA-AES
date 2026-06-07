@@ -4,11 +4,23 @@
 
 CUDA-AES Benchmark is a reproducible open-source benchmark suite for GPU AES implementations. It should become a living, credible repository for CUDA developers who search for GPU AES, CUDA AES benchmark, AES GPU performance, and reproducible cryptography benchmark work.
 
-The existing code already runs CUDA AES kernels for ECB, CTR, and GCM with 128-bit and 256-bit keys, compares GPU throughput against OpenSSL CPU baselines, and writes benchmark output. The project now needs to mature from a personal experiment into a public, trusted, searchable, maintainable repository that can eventually benchmark the full practical AES mode family: ECB, CBC, CFB, OFB, CTR, GCM/GMAC, CCM, XTS-AES, AES-KW, and AES-KWP.
+The v1.0 Public Release matured the project from a personal experiment into a public, trusted, searchable, maintainable repository. It now ships CUDA AES kernels for the full practical confidentiality and specialized mode family — ECB, CBC, CFB, OFB, CTR, GCM, CCM, XTS-AES, AES-KW, and AES-KWP (AES-128 and AES-256) — with a CTest known-answer harness, a reproducible benchmark harness, a public docs hub, open-source governance, and a published `v1.0.0` GitHub Release. GMAC/CMAC are documented as authentication/MAC boundaries rather than bulk-encryption throughput.
 
 ## Core Value
 
 Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
+
+## Current State
+
+**Shipped:** v1.0 Public Release — 2026-06-07 (`v1.0.0` GitHub Release published).
+
+- 8 phases, 23 plans, 42 tasks; 40/40 v1 requirements validated.
+- Source + KAT + benchmark dispatch for ECB, CBC, CFB-128, OFB, CTR, GCM, CCM, XTS-AES, AES-KW, AES-KWP (AES-128/256).
+- Runtime verified from a Visual Studio 2022 Developer Command Prompt: Release build, CTest (1/1 across implemented modes), and a smoke benchmark all pass.
+- Public docs hub, governance files, citation metadata, issue/PR templates, changelog, and a v1.0.0 release with raw benchmark artifacts.
+- `master` is protected by the `protect-master` ruleset (linear history, PR-only squash/rebase, required review-thread resolution).
+
+**Next milestone goals (v2.0 candidates):** broader benchmarking (multi-GPU results tables, CUDA-version/arch matrix automation, charts), standalone GMAC/CMAC authentication benchmarking, a documented library/API surface, and publication (GitHub Pages, DOI-backed archive, technical report). See `## Requirements → Active` and the v2 list carried in the requirements archive.
 
 ## Requirements
 
@@ -27,12 +39,20 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 - Phase 4 added a public README/docs package, open-source governance files, citation metadata, issue/PR templates, an AES mode matrix, and legacy Tezcan provenance notes.
 - Phase 5 added CBC, CFB-128, and OFB source, KAT, benchmark dispatch, documentation, and verification evidence at source level.
 - Phase 6 added CCM, XTS-AES, AES-KW, AES-KWP source, KAT, benchmark dispatch, documentation, GMAC/CMAC boundary notes, and verification evidence at source level.
+- ✓ Improved discoverability for GitHub search, Google indexing, and technical readers searching for GPU AES benchmarks — v1.0 (Phase 7, DOCS-04).
+- ✓ Packaged benchmark results as a versioned release with reproducibility notes — v1.0 (Phase 8, REPO-04; `v1.0.0` GitHub Release with raw artifacts).
+- ✓ Kept the repo alive with maintenance rules, roadmap, changelog, contribution workflow, templates, and a security reporting path — v1.0 (Phase 8, MAINT-01..04).
 
 ### Active
 
-- [ ] Improve discoverability for GitHub search, Google indexing, and technical readers searching for GPU AES benchmarks.
-- [ ] Package benchmark results as versioned releases with reproducibility notes.
-- [ ] Keep the repo alive with clear maintenance rules, roadmap, changelog, and contribution workflow.
+(v2.0 candidates — to be scoped via `/gsd-new-milestone`)
+
+- [ ] Compare multiple GPU models in a standardized results table (BENCH-07).
+- [ ] Automate a benchmark matrix across CUDA versions and architectures (BENCH-08).
+- [ ] Generate charts from benchmark data (BENCH-09).
+- [ ] Benchmark GMAC and CMAC as standalone authentication/MAC workloads (MODE-09).
+- [ ] Offer a documented library/API surface for the AES kernels (LIB-01, LIB-02).
+- [ ] Publish a project website (GitHub Pages), a DOI-backed archived release, and a paper-style technical report (PUB-01, PUB-02, PUB-03).
 
 ### Out of Scope
 
@@ -77,11 +97,11 @@ Current external best-practice signals:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Position as a reproducible benchmark suite | The existing code is benchmark-oriented and this is the strongest credible public identity. | Active |
+| Position as a reproducible benchmark suite | The existing code is benchmark-oriented and this is the strongest credible public identity. | ✓ Good — shipped v1.0 |
 | Target CUDA/GPU developers first | This audience judges by buildability, methodology, correctness, and results. | Active |
 | Use reproducible benchmark standard | Prestige depends on trust, not only peak throughput numbers. | Active |
-| Treat library/API use as out of scope for v1 | Avoid implying production cryptographic safety before tests and API hardening exist. | Pending |
-| Build SEO through documentation quality | Search engines and developers both reward clear, useful, crawlable content. | Pending |
+| Treat library/API use as out of scope for v1 | Avoid implying production cryptographic safety before tests and API hardening exist. | Held — revisit in v2 (LIB-01/02) |
+| Build SEO through documentation quality | Search engines and developers both reward clear, useful, crawlable content. | ✓ Validated v1.0 (Phase 7) |
 | Plan full AES mode coverage | The prestige target is stronger if the roadmap covers all important AES modes, not only current ECB/CTR/GCM code. | Active |
 | Treat GCM review findings as blockers | Public benchmark credibility depends on standard AES-GCM correctness and authentication semantics. | Active |
 
@@ -103,4 +123,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state.
 
 ---
-*Last updated: 2026-06-05 after Phase 6 completion*
+*Last updated: 2026-06-08 after v1.0 Public Release milestone*
