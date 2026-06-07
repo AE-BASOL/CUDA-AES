@@ -1,10 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
+milestone_name: Public Release
 status: completed
-stopped_at: v1.0 milestone complete — v1.0.0 GitHub Release published
-last_updated: "2026-06-07T00:00:00.000Z"
+stopped_at: v1.0 milestone complete — Phase 8 verification-passed and `v1.0.0` GitHub Release published.
+last_updated: "2026-06-07T21:02:40.187Z"
+last_activity: 2026-06-07 — Milestone v1.0 completed and archived
 progress:
   total_phases: 8
   completed_phases: 8
@@ -17,10 +18,10 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-06-05)
+See: `.planning/PROJECT.md` (updated 2026-06-08)
 
 **Core value:** Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
-**Current focus:** v1.0 milestone complete — all 8 phases executed and the v1.0.0 GitHub Release is published.
+**Current focus:** v1.0 Public Release archived. Planning next milestone (v2.0) — see `/gsd-new-milestone`.
 
 ## Current Roadmap
 
@@ -33,7 +34,7 @@ Phase 8: Release And Maintenance Loop
 **Goal:** Publish a v1 release and define how the repo stays alive.
 
 **Requirements:** REPO-04, MAINT-01, MAINT-02, MAINT-03, MAINT-04
-**Status:** Complete 2026-06-06 — verification-passed, `v1.0.0` GitHub Release published
+**Status:** v1.0 milestone complete
 **Plans:** 3 plans
 
 | Plan | Wave | Focus |
@@ -76,8 +77,19 @@ Resume file: None
 
 ## Next Command
 
-Milestone complete. Start a new milestone with `$gsd-new-milestone` when ready, or run `$gsd-complete-milestone` to archive v1.0.
+v1.0 Public Release archived to `.planning/milestones/`. Start the next milestone with `/gsd-new-milestone` (continues at Phase 9). Optional: enable GitHub private vulnerability reporting in repo Settings.
 
 ## Scope Note
 
 The roadmap includes long-term AES mode coverage beyond the current ECB, CBC, CFB-128, OFB, CTR, GCM, CCM, XTS-AES, AES-KW, and AES-KWP code. GMAC/CMAC are tracked as authentication/MAC benchmarking rather than bulk encryption modes.
+
+## Current Position
+
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-07 — Milestone v1.0 completed and archived
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
