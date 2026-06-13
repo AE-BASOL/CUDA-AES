@@ -42,6 +42,13 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86
 cmake --build build --config Release
 ```
 
+### Global NPX Execution (New in v2.0)
+You can also run the benchmark globally without manual compilation via `npx`, assuming you have CMake and the CUDA Toolkit installed:
+
+```bash
+npx cuda-aes-benchmark
+```
+
 On Windows, use a Visual Studio Developer Command Prompt or pass the host compiler explicitly:
 
 ```powershell

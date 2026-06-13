@@ -1,0 +1,18 @@
+{
+  "name": "cuda-aes-benchmark",
+  "version": "2.0.0",
+  "description": "GPU vs CPU AES Cryptography Benchmark Framework",
+  "bin": {
+    "cuda-aes-bench": "./bin/run.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AE-BASOL/CUDA-AES.git"
+  },
+  "author": "Efe Basol",
+  "license": "MIT",
+  "dependencies": {}
+}
