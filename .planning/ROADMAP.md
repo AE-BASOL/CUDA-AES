@@ -1,42 +1,29 @@
-# Roadmap: CUDA-AES Benchmark
+# Roadmap
 
-**Project:** CUDA-AES Benchmark
-**Core Value:** Anyone landing on the repository can build it, verify AES correctness, reproduce benchmark results, and understand why the results are credible.
+## Phase 9: Repository Hygiene and Branch Cleanup
+**Goal**: Resolve and prune all stale remote and local feature branches to improve repository maintainability and presentation.
+**Requirements**: MAINT-05, MAINT-06
+**Success Criteria**:
+1. All stale remote branches are deleted.
+2. GitHub repository settings are verified to be aligned with open-source best practices.
 
-## Milestones
+## Phase 10: GPU Crypto Ecosystem Research
+**Goal**: Research the GPU cryptography ecosystem to evaluate competitor solutions, mode completeness, and propose new features.
+**Requirements**: RES-01, RES-02
+**Success Criteria**:
+1. A research document comparing the repository with existing GPU cryptography solutions.
+2. At least one new feature or cryptographic mode is proposed and documented for implementation.
 
-- ✅ **v1.0 Public Release** — Phases 1-8 (shipped 2026-06-07) — full detail in [`milestones/v1.0-ROADMAP.md`](milestones/v1.0-ROADMAP.md)
+## Phase 11: CPU vs GPU Benchmark Framework
+**Goal**: Implement a benchmark comparison framework using OpenSSL for CPU reference.
+**Requirements**: BENCH-10, BENCH-11
+**Success Criteria**:
+1. Benchmark tool can run and measure OpenSSL CPU AES implementations.
+2. Results table outputs both GPU and CPU performance metrics for comparison.
 
-## Phases
-
-<details>
-<summary>✅ v1.0 Public Release (Phases 1-8) — SHIPPED 2026-06-07</summary>
-
-- [x] Phase 1: Repository And Build Foundation (3/3 plans) — completed 2026-06-04
-- [x] Phase 2: Correctness Baseline (3/3 plans) — completed 2026-06-06
-- [x] Phase 3: Reproducible Benchmark Harness (3/3 plans) — completed 2026-06-04
-- [x] Phase 4: Open-Source Documentation Package (3/3 plans) — completed 2026-06-04
-- [x] Phase 5: Confidentiality Mode Expansion (3/3 plans) — completed 2026-06-05
-- [x] Phase 6: Authenticated And Specialized Mode Expansion (4/4 plans) — completed 2026-06-05
-- [x] Phase 7: Discoverability And SEO (1/1 plan) — completed 2026-06-06
-- [x] Phase 8: Release And Maintenance Loop (3/3 plans) — completed 2026-06-06
-
-</details>
-
-## Progress
-
-| Phase                                         | Milestone | Plans Complete | Status   | Completed  |
-| --------------------------------------------- | --------- | -------------- | -------- | ---------- |
-| 1. Repository And Build Foundation            | v1.0      | 3/3            | Complete | 2026-06-04 |
-| 2. Correctness Baseline                       | v1.0      | 3/3            | Complete | 2026-06-06 |
-| 3. Reproducible Benchmark Harness             | v1.0      | 3/3            | Complete | 2026-06-04 |
-| 4. Open-Source Documentation Package          | v1.0      | 3/3            | Complete | 2026-06-04 |
-| 5. Confidentiality Mode Expansion             | v1.0      | 3/3            | Complete | 2026-06-05 |
-| 6. Authenticated And Specialized Mode Expansion | v1.0    | 4/4            | Complete | 2026-06-05 |
-| 7. Discoverability And SEO                    | v1.0      | 1/1            | Complete | 2026-06-06 |
-| 8. Release And Maintenance Loop               | v1.0      | 3/3            | Complete | 2026-06-06 |
-
-**v1.0 totals:** 8 phases · 23 plans · 42 tasks · 40/40 requirements validated.
-
----
-*v1.0 shipped 2026-06-07. Next milestone (v2.0) begins at Phase 9 — see `/gsd-new-milestone`.*
+## Phase 12: Global Packaging and Distribution
+**Goal**: Transform the repository into a globally accessible package (e.g., `npx`) to maximize reach and usability.
+**Requirements**: PKG-01, PKG-02
+**Success Criteria**:
+1. The project can be executed globally using `npx` or a similar tool without local compilation overhead.
+2. README is updated with instructions on how to use the global package.
