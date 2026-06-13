@@ -22,6 +22,16 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 
 **Next milestone goals (v2.0 candidates):** broader benchmarking (multi-GPU results tables, CUDA-version/arch matrix automation, charts), standalone GMAC/CMAC authentication benchmarking, a documented library/API surface, and publication (GitHub Pages, DOI-backed archive, technical report). See `## Requirements → Active` and the v2 list carried in the requirements archive.
 
+## Current Milestone: v2.0 Global Package and Benchmark Expansion
+
+**Goal:** Transform the repository into a globally accessible package (e.g., via `npx`), expand benchmark capabilities with CPU comparisons, and clean up repository hygiene by pruning stale branches.
+
+**Target features:**
+- Implement global packaging and distribution (e.g., `npx` or equivalent ecosystem integration)
+- CPU vs GPU benchmark comparison framework
+- Research GPU cryptography ecosystem (competitors, AES mode completeness, new feature discovery)
+- Repository cleanup (resolve and delete stale branches)
+
 ## Requirements
 
 ### Validated
@@ -53,6 +63,10 @@ Anyone landing on the repository can build it, verify AES correctness, reproduce
 - [ ] Benchmark GMAC and CMAC as standalone authentication/MAC workloads (MODE-09).
 - [ ] Offer a documented library/API surface for the AES kernels (LIB-01, LIB-02).
 - [ ] Publish a project website (GitHub Pages), a DOI-backed archived release, and a paper-style technical report (PUB-01, PUB-02, PUB-03).
+- [ ] Implement global packaging and distribution (PKG-01)
+- [ ] CPU vs GPU benchmark comparison framework (BENCH-10)
+- [ ] Research GPU cryptography ecosystem (competitors, mode completeness, features) (RES-01)
+- [ ] Repository cleanup and stale branch resolution (MAINT-05)
 
 ### Out of Scope
 
@@ -123,4 +137,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state.
 
 ---
-*Last updated: 2026-06-08 after v1.0 Public Release milestone*
+*Last updated: 2026-06-13 after defining v2.0 milestone*

@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Public Release
-status: completed
-stopped_at: v1.0 milestone complete — Phase 8 verification-passed and `v1.0.0` GitHub Release published.
-last_updated: "2026-06-07T21:02:40.187Z"
-last_activity: 2026-06-07 — Milestone v1.0 completed and archived
+milestone: v2.0
+milestone_name: Global Package and Benchmark Expansion
+status: planning
+stopped_at: Session resumed, proceeding to /gsd-new-milestone
+last_updated: "2026-06-13T12:45:00.000Z"
+last_activity: 2026-06-13 — Milestone v2.0 started
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -71,8 +71,8 @@ Resolved during the Phase 8 release gate (2026-06-06): the prior `cl.exe`/`nvcc`
 
 ## Session Continuity
 
-Last session: 2026-06-06
-Stopped at: v1.0 milestone complete — Phase 8 verification-passed and `v1.0.0` GitHub Release published.
+Last session: 2026-06-13
+Stopped at: Session resumed, proceeding to /gsd-new-milestone
 Resume file: None
 
 ## Next Command
@@ -85,11 +85,11 @@ The roadmap includes long-term AES mode coverage beyond the current ECB, CBC, CF
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-07 — Milestone v1.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-13 — Milestone v2.0 started
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Define requirements and create roadmap
