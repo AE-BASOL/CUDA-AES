@@ -72,8 +72,8 @@ Resolved during the Phase 8 release gate (2026-06-06): the prior `cl.exe`/`nvcc`
 ## Session Continuity
 
 Last session: 2026-06-13
-Stopped at: Session resumed, proceeding to /gsd-new-milestone
-Resume file: None
+Stopped at: Phase 9 context gathered
+Resume file: .planning/phases/09-repository-hygiene-and-branch-cleanup/09-CONTEXT.md
 
 ## Next Command
 
